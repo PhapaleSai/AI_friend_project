@@ -31,7 +31,7 @@ export default function Home() {
 
   return (
     <main
-      className="relative z-10 h-screen w-screen overflow-hidden"
+      className="relative z-10 w-full min-h-screen"
       style={{
         opacity: transitioning ? 0 : 1,
         transform: transitioning ? 'scale(0.98)' : 'scale(1)',

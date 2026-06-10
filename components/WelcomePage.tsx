@@ -170,7 +170,7 @@ function CharacterCard({ character, onSelect, index, disabled }: {
         <div className="text-center">
           <h3 className="text-2xl font-black tracking-tight transition-all duration-300 animate-gradient-text"
             style={{
-              background: hovered
+              backgroundImage: hovered
                 ? `linear-gradient(135deg, ${character.theme.primary}, ${character.theme.secondary}, ${character.theme.primary})`
                 : `linear-gradient(135deg, white, rgba(255,255,255,0.75))`,
               WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
@@ -265,7 +265,7 @@ export default function WelcomePage({ onSelect }: WelcomePageProps) {
   };
 
   return (
-    <div className="relative min-h-screen w-full flex flex-col items-center justify-center overflow-hidden px-5 py-10"
+    <div className="relative min-h-screen w-full flex flex-col items-center justify-start sm:justify-center px-5 py-10"
       style={{ background: '#07070f' }}>
 
       {/* ── Moving aurora blobs ── */}
@@ -331,7 +331,7 @@ export default function WelcomePage({ onSelect }: WelcomePageProps) {
           </span>
           <br />
           <span className="animate-gradient-text" style={{
-            background: 'linear-gradient(135deg, #f9a8d4, #c084fc, #fb923c, #fbbf24, #c084fc)',
+            backgroundImage: 'linear-gradient(135deg, #f9a8d4, #c084fc, #fb923c, #fbbf24, #c084fc)',
             backgroundSize: '300% 300%',
             WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
           }}>

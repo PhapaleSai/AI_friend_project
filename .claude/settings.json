@@ -14,7 +14,10 @@
       "Bash(convert --version)",
       "Bash(git init *)",
       "Bash(git branch *)",
-      "Bash(git add *)"
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)",
+      "Bash(git remote *)",
+      "Bash(git push *)"
     ],
     "additionalDirectories": [
       "/tmp"
