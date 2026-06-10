@@ -18,6 +18,9 @@ html, body {
   color: #f1f5f9;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   -webkit-font-smoothing: antialiased;
+  /* Smooth native scroll on iOS */
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: none;
 }
 
 /* ─── Scrollbar ───────────────────────────────────────────────── */
@@ -63,6 +66,7 @@ html, body {
   overflow: hidden;
   z-index: 0;
   pointer-events: none;
+  will-change: auto;
 }
 .starfield::before, .starfield::after {
   content: '';
@@ -216,9 +220,16 @@ html, body {
   0%,100% { transform: translate(0, 0)     scale(1);    }
   50%      { transform: translate(30px, 60px) scale(1.15); }
 }
-.aurora-1 { animation: aurora-drift-1 18s ease-in-out infinite; }
-.aurora-2 { animation: aurora-drift-2 22s ease-in-out infinite; }
-.aurora-3 { animation: aurora-drift-3 14s ease-in-out infinite; }
+.aurora-1 { animation: aurora-drift-1 18s ease-in-out infinite; will-change: transform; }
+.aurora-2 { animation: aurora-drift-2 22s ease-in-out infinite; will-change: transform; }
+.aurora-3 { animation: aurora-drift-3 14s ease-in-out infinite; will-change: transform; }
+
+/* ── Reduce motion: disable expensive animations for users who prefer it ── */
+@media (prefers-reduced-motion: reduce) {
+  .aurora-1, .aurora-2, .aurora-3 { animation: none; }
+  .particle { animation: none; opacity: 0; }
+  .animate-gradient-text { animation: none; }
+}
 
 /* ── Floating particles ── */
 @keyframes particle-rise {
@@ -232,6 +243,7 @@ html, body {
   border-radius: 50%;
   pointer-events: none;
   animation: particle-rise var(--dur, 6s) ease-in var(--delay, 0s) infinite;
+  will-change: transform, opacity;
 }
 
 /* ── Animated gradient border on card ── */

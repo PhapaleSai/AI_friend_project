@@ -17,21 +17,22 @@ function Particles() {
   const [particles, setParticles] = useState<Particle[]>([]);
   useEffect(() => {
     const colors = ['#c084fc', '#f97316', '#ec4899', '#818cf8', '#fb923c', '#a855f7'];
+    // Reduced to 10 particles for better scroll performance
     setParticles(
-      Array.from({ length: 28 }, (_, i) => ({
+      Array.from({ length: 10 }, (_, i) => ({
         id: i,
         x: Math.random() * 100,
-        size: Math.random() * 4 + 2,
+        size: Math.random() * 3 + 2,
         color: colors[Math.floor(Math.random() * colors.length)],
-        dur: Math.random() * 8 + 5,
-        delay: Math.random() * 10,
-        sway: (Math.random() - 0.5) * 60,
+        dur: Math.random() * 10 + 8,
+        delay: Math.random() * 12,
+        sway: (Math.random() - 0.5) * 40,
       }))
     );
   }, []);
 
   return (
-    <div className="absolute inset-0 overflow-hidden pointer-events-none">
+    <div className="fixed inset-0 overflow-hidden pointer-events-none" style={{ zIndex: 1 }}>
       {particles.map((p) => (
         <div
           key={p.id}
@@ -42,7 +43,6 @@ function Particles() {
             width: p.size,
             height: p.size,
             background: p.color,
-            boxShadow: `0 0 ${p.size * 2}px ${p.color}`,
             '--dur':   `${p.dur}s`,
             '--delay': `${p.delay}s`,
             '--sway':  `${p.sway}px`,
@@ -81,6 +81,7 @@ function CharacterCard({ character, onSelect, index, disabled }: {
         animation: `slide-up 0.7s ${300 + index * 160}ms cubic-bezier(0.16,1,0.3,1) both`,
         opacity: disabled ? 0.4 : 1,
         transition: 'opacity 0.3s ease',
+        willChange: 'transform',
       }}
       onClick={disabled ? undefined : onSelect}
       onMouseEnter={() => !disabled && setHovered(true)}
@@ -88,22 +89,25 @@ function CharacterCard({ character, onSelect, index, disabled }: {
       onMouseMove={handleMouseMove}
     >
       {/* Outer glow */}
-      <div className="absolute inset-0 rounded-3xl blur-2xl pointer-events-none transition-all duration-700"
+      <div className="absolute inset-0 rounded-3xl pointer-events-none transition-all duration-700"
         style={{
-          background: `radial-gradient(ellipse at 50% 30%, ${character.theme.primary}40, transparent 70%)`,
-          opacity: hovered ? 1 : 0.35,
+          background: `radial-gradient(ellipse at 50% 30%, ${character.theme.primary}35, transparent 70%)`,
+          opacity: hovered ? 1 : 0.3,
           transform: hovered ? 'scale(1.06)' : 'scale(1)',
+          filter: 'blur(20px)',
+          willChange: 'opacity, transform',
         }} />
 
-      {/* Animated gradient border (always spinning) */}
+      {/* Static gradient border — animated only on hover to save GPU */}
       <div className="absolute inset-0 rounded-3xl pointer-events-none"
         style={{
           padding: 1.5,
           background: hovered
             ? `conic-gradient(from calc(var(--a, 0deg)), ${character.theme.primary}, ${character.theme.secondary}, ${character.theme.primary})`
-            : `conic-gradient(from 0deg, ${character.theme.primary}40, ${character.theme.secondary}20, ${character.theme.primary}40)`,
+            : `linear-gradient(135deg, ${character.theme.primary}30, ${character.theme.secondary}15, ${character.theme.primary}30)`,
           borderRadius: '1.5rem',
-          animation: hovered ? 'border-spin 2.5s linear infinite' : 'border-spin 8s linear infinite',
+          animation: hovered ? 'border-spin 2.5s linear infinite' : 'none',
+          willChange: hovered ? 'background' : 'auto',
         }}>
         <div className="absolute inset-0 rounded-3xl" style={{ background: '#0d0d1a' }} />
       </div>
@@ -112,14 +116,17 @@ function CharacterCard({ character, onSelect, index, disabled }: {
       <div
         className="relative rounded-3xl overflow-hidden flex flex-col items-center transition-all duration-500"
         style={{
-          background: `radial-gradient(ellipse at ${mousePos.x * 100}% ${mousePos.y * 100}%, ${character.theme.primary}12 0%, rgba(255,255,255,0.04) 60%, rgba(255,255,255,0.02) 100%)`,
-          backdropFilter: 'blur(30px)',
-          transform: hovered ? 'translateY(-12px)' : 'translateY(0)',
+          background: `radial-gradient(ellipse at ${mousePos.x * 100}% ${mousePos.y * 100}%, ${character.theme.primary}10 0%, rgba(13,13,26,0.92) 60%, rgba(13,13,26,0.96) 100%)`,
+          backdropFilter: 'blur(16px)',
+          WebkitBackdropFilter: 'blur(16px)',
+          transform: hovered ? 'translateY(-12px) translateZ(0)' : 'translateY(0) translateZ(0)',
           boxShadow: hovered
             ? `0 32px 80px -8px ${character.theme.primary}40, 0 0 0 1px ${character.theme.primary}30`
             : '0 8px 32px -8px rgba(0,0,0,0.7)',
           padding: '2rem 1.5rem 1.75rem',
           gap: '1.25rem',
+          willChange: 'transform',
+          contain: 'layout style paint',
         }}
       >
         {/* Shimmer sweep */}
@@ -132,19 +139,21 @@ function CharacterCard({ character, onSelect, index, disabled }: {
 
         {/* Portrait */}
         <div className="relative">
-          {/* Rotating conic ring */}
+          {/* Rotating conic ring — slow spin always, fast on hover */}
           <div className="absolute inset-[-4px] rounded-full"
             style={{
               background: `conic-gradient(from 0deg, ${character.theme.primary}, ${character.theme.secondary}, transparent 60%, ${character.theme.primary})`,
               borderRadius: '50%',
-              animation: hovered ? 'spin 2s linear infinite' : 'spin 6s linear infinite',
-              opacity: hovered ? 0.9 : 0.5,
+              animation: hovered ? 'spin 2s linear infinite' : 'spin 12s linear infinite',
+              opacity: hovered ? 0.9 : 0.4,
+              willChange: 'transform',
             }} />
           {/* Glow halo */}
-          <div className="absolute inset-[-8px] rounded-full blur-xl pointer-events-none"
+          <div className="absolute inset-[-8px] rounded-full pointer-events-none"
             style={{
-              background: `radial-gradient(circle, ${character.theme.primary}50, transparent 70%)`,
-              opacity: hovered ? 0.8 : 0.3,
+              background: `radial-gradient(circle, ${character.theme.primary}40, transparent 70%)`,
+              filter: 'blur(12px)',
+              opacity: hovered ? 0.7 : 0.25,
               transition: 'opacity 0.5s',
             }} />
           {/* Photo */}
@@ -268,28 +277,26 @@ export default function WelcomePage({ onSelect }: WelcomePageProps) {
     <div className="relative min-h-screen w-full flex flex-col items-center justify-start sm:justify-center px-5 py-10"
       style={{ background: '#07070f' }}>
 
-      {/* ── Moving aurora blobs ── */}
-      <div className="absolute inset-0 pointer-events-none overflow-hidden">
+      {/* ── Moving aurora blobs — fixed so they don't trigger scroll repaints ── */}
+      <div className="fixed inset-0 pointer-events-none overflow-hidden" style={{ zIndex: 0 }}>
         <div className="absolute aurora-1" style={{
-          width: 900, height: 900, top: '-30%', left: '-25%',
-          background: 'radial-gradient(circle, rgba(139,92,246,0.18) 0%, transparent 65%)',
-          filter: 'blur(50px)',
+          width: 700, height: 700, top: '-20%', left: '-20%',
+          background: 'radial-gradient(circle, rgba(139,92,246,0.14) 0%, transparent 65%)',
+          filter: 'blur(60px)',
+          willChange: 'transform',
         }} />
         <div className="absolute aurora-2" style={{
-          width: 800, height: 800, bottom: '-30%', right: '-20%',
-          background: 'radial-gradient(circle, rgba(249,115,22,0.18) 0%, transparent 65%)',
-          filter: 'blur(50px)',
-        }} />
-        <div className="absolute aurora-3" style={{
-          width: 500, height: 500, top: '20%', left: '35%',
-          background: 'radial-gradient(circle, rgba(236,72,153,0.10) 0%, transparent 65%)',
-          filter: 'blur(40px)',
+          width: 600, height: 600, bottom: '-20%', right: '-15%',
+          background: 'radial-gradient(circle, rgba(249,115,22,0.14) 0%, transparent 65%)',
+          filter: 'blur(60px)',
+          willChange: 'transform',
         }} />
       </div>
 
-      {/* ── Grid ── */}
-      <div className="absolute inset-0 pointer-events-none opacity-[0.022]"
-        style={{
+      {/* ── Grid — fixed so it doesn't scroll repaint ── */}
+      <div className="fixed inset-0 pointer-events-none" style={{
+          zIndex: 0,
+          opacity: 0.018,
           backgroundImage: 'linear-gradient(rgba(255,255,255,1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,1) 1px, transparent 1px)',
           backgroundSize: '80px 80px',
         }} />
