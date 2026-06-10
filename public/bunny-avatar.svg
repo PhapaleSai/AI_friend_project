@@ -1,0 +1,92 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
+  <defs>
+    <radialGradient id="bgB" cx="50%" cy="30%" r="80%">
+      <stop offset="0%" stop-color="#fff7ed"/>
+      <stop offset="100%" stop-color="#f97316"/>
+    </radialGradient>
+    <radialGradient id="skinB" cx="40%" cy="35%" r="60%">
+      <stop offset="0%" stop-color="#fde8d0"/>
+      <stop offset="100%" stop-color="#f0b489"/>
+    </radialGradient>
+    <clipPath id="circleB">
+      <circle cx="100" cy="100" r="100"/>
+    </clipPath>
+  </defs>
+
+  <!-- Background -->
+  <circle cx="100" cy="100" r="100" fill="url(#bgB)"/>
+
+  <!-- Subtle background accents -->
+  <circle cx="32" cy="42" r="3" fill="#fb923c" opacity="0.3"/>
+  <circle cx="168" cy="30" r="2" fill="#fbbf24" opacity="0.35"/>
+  <circle cx="172" cy="160" r="2.5" fill="#f97316" opacity="0.25"/>
+
+  <!-- Body / Jacket - cool style -->
+  <path d="M 30 200 Q 38 163 72 150 L 90 146 L 100 158 L 110 146 L 128 150 Q 162 163 170 200 Z" fill="#1c1917"/>
+  <!-- Jacket lapels -->
+  <path d="M 90 146 L 100 170 L 100 158 Z" fill="#292524"/>
+  <path d="M 110 146 L 100 170 L 100 158 Z" fill="#292524"/>
+  <!-- T-shirt peek under jacket -->
+  <path d="M 90 152 L 100 165 L 110 152 L 107 148 L 100 155 L 93 148 Z" fill="#f97316"/>
+  <!-- Jacket collar detail -->
+  <path d="M 82 148 L 90 146 L 86 156" fill="#374151" opacity="0.8"/>
+  <path d="M 118 148 L 110 146 L 114 156" fill="#374151" opacity="0.8"/>
+
+  <!-- Neck -->
+  <rect x="87" y="141" width="26" height="18" rx="9" fill="url(#skinB)"/>
+
+  <!-- Hair (behind head) -->
+  <path d="M 62 98 Q 54 128 60 152 Q 70 162 82 156" fill="#1c1917"/>
+  <path d="M 138 98 Q 146 128 140 152 Q 130 162 118 156" fill="#1c1917"/>
+
+  <!-- Head -->
+  <ellipse cx="100" cy="110" rx="38" ry="41" fill="url(#skinB)"/>
+
+  <!-- Hair top - cool messy/swept style -->
+  <path d="M 62 98 Q 58 72 72 59 Q 85 50 100 48 Q 115 50 128 59 Q 142 72 138 98 Q 128 82 100 80 Q 72 82 62 98 Z" fill="#1c1917"/>
+  <!-- Messy front tufts -->
+  <path d="M 78 70 Q 72 57 80 50 Q 85 62 82 72" fill="#1c1917"/>
+  <path d="M 92 66 Q 88 53 96 47 Q 100 59 96 68" fill="#1c1917"/>
+  <path d="M 106 65 Q 106 52 114 48 Q 116 60 110 68" fill="#1c1917"/>
+  <path d="M 118 68 Q 122 56 130 56 Q 128 68 122 74" fill="#1c1917"/>
+  <!-- Side swept bang over forehead -->
+  <path d="M 62 88 Q 60 76 68 68 Q 74 80 70 92" fill="#1c1917"/>
+  <!-- Hair shine highlights -->
+  <path d="M 82 55 Q 95 50 112 55" stroke="#3d3420" stroke-width="2.5" fill="none" stroke-linecap="round" opacity="0.6"/>
+  <path d="M 85 62 Q 95 58 108 63" stroke="#3d3420" stroke-width="1.5" fill="none" stroke-linecap="round" opacity="0.4"/>
+
+  <!-- Ears -->
+  <ellipse cx="62" cy="111" rx="7" ry="10" fill="url(#skinB)"/>
+  <ellipse cx="138" cy="111" rx="7" ry="10" fill="url(#skinB)"/>
+
+  <!-- Eyes whites -->
+  <ellipse cx="86" cy="109" rx="9" ry="10" fill="white"/>
+  <ellipse cx="114" cy="109" rx="9" ry="10" fill="white"/>
+  <!-- Iris (warm dark brown eyes) -->
+  <circle cx="86" cy="110" r="6.5" fill="#4a3728"/>
+  <circle cx="114" cy="110" r="6.5" fill="#4a3728"/>
+  <!-- Pupil -->
+  <circle cx="86" cy="110" r="4" fill="#1a0e08"/>
+  <circle cx="114" cy="110" r="4" fill="#1a0e08"/>
+  <!-- Eye shine -->
+  <circle cx="88.5" cy="108" r="2.2" fill="white"/>
+  <circle cx="116.5" cy="108" r="2.2" fill="white"/>
+  <circle cx="84" cy="112" r="1" fill="white" opacity="0.6"/>
+  <circle cx="112" cy="112" r="1" fill="white" opacity="0.6"/>
+
+  <!-- Cool eyebrows (slightly arched, confident) -->
+  <path d="M 77 100 Q 86 96 95 99" stroke="#1c1917" stroke-width="3" fill="none" stroke-linecap="round"/>
+  <path d="M 105 99 Q 114 96 123 100" stroke="#1c1917" stroke-width="3" fill="none" stroke-linecap="round"/>
+
+  <!-- Nose -->
+  <path d="M 97 122 Q 100 126 103 122" stroke="#c2774a" stroke-width="1.8" fill="none" stroke-linecap="round" opacity="0.6"/>
+
+  <!-- Cool confident smile / slight smirk -->
+  <path d="M 87 132 Q 100 144 115 136" stroke="#9a4e28" stroke-width="3" fill="none" stroke-linecap="round"/>
+
+  <!-- Very slight stubble texture (cool look) -->
+  <ellipse cx="100" cy="135" rx="26" ry="7" fill="#d4956a" opacity="0.12"/>
+
+  <!-- Dimple on one side (cool asymmetric smile) -->
+  <circle cx="115" cy="134" r="2.2" fill="#e9a070" opacity="0.5"/>
+</svg>

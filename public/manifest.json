@@ -1,0 +1,20 @@
+{
+  "name": "Friend AI — Naina & Bunny",
+  "short_name": "Friend AI",
+  "description": "Your AI companions Naina & Bunny. Talk to them like real friends.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#07070f",
+  "theme_color": "#07070f",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["productivity", "social"],
+  "lang": "en"
+}

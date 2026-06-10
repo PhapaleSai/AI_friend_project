@@ -1,0 +1,23 @@
+{
+  "permissions": {
+    "allow": [
+      "Skill(claude-api)",
+      "Skill(claude-api:*)",
+      "Bash(npm install *)",
+      "Bash(npm audit *)",
+      "Bash(npx tsc *)",
+      "Bash(npm run *)",
+      "Read(//tmp/**)",
+      "Bash(npm uninstall *)",
+      "Bash(pkill -f \"next dev\")",
+      "Bash(npm run dev > /tmp/dev-server.log 2>&1 & *)",
+      "Bash(convert --version)",
+      "Bash(git init *)",
+      "Bash(git branch *)",
+      "Bash(git add *)"
+    ],
+    "additionalDirectories": [
+      "/tmp"
+    ]
+  }
+}

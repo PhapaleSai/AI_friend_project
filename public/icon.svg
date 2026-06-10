@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#c084fc"/>
+      <stop offset="50%" stop-color="#ec4899"/>
+      <stop offset="100%" stop-color="#f97316"/>
+    </linearGradient>
+    <linearGradient id="glow" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#a855f7" stop-opacity="0.4"/>
+      <stop offset="100%" stop-color="#f97316" stop-opacity="0.4"/>
+    </linearGradient>
+  </defs>
+  <rect width="192" height="192" rx="44" fill="#0d0d1a"/>
+  <circle cx="96" cy="96" r="80" fill="url(#glow)"/>
+  <rect x="28" y="52" width="90" height="52" rx="18" fill="url(#bg)" opacity="0.95"/>
+  <polygon points="40,104 28,122 62,104" fill="#c084fc" opacity="0.95"/>
+  <rect x="74" y="98" width="90" height="46" rx="16" fill="#f97316" opacity="0.9"/>
+  <polygon points="152,144 164,158 140,144" fill="#f97316" opacity="0.9"/>
+  <circle cx="55" cy="78" r="5" fill="white" opacity="0.9"/>
+  <circle cx="73" cy="78" r="5" fill="white" opacity="0.9"/>
+  <circle cx="91" cy="78" r="5" fill="white" opacity="0.9"/>
+  <circle cx="101" cy="121" r="4.5" fill="white" opacity="0.9"/>
+  <circle cx="119" cy="121" r="4.5" fill="white" opacity="0.9"/>
+  <circle cx="137" cy="121" r="4.5" fill="white" opacity="0.9"/>
+</svg>

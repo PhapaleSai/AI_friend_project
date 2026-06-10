@@ -1,0 +1,105 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
+  <defs>
+    <radialGradient id="bgN" cx="50%" cy="30%" r="80%">
+      <stop offset="0%" stop-color="#fdf2f8"/>
+      <stop offset="100%" stop-color="#c4b5fd"/>
+    </radialGradient>
+    <radialGradient id="skinN" cx="40%" cy="35%" r="60%">
+      <stop offset="0%" stop-color="#fde8d0"/>
+      <stop offset="100%" stop-color="#f5c5a3"/>
+    </radialGradient>
+    <clipPath id="circleN">
+      <circle cx="100" cy="100" r="100"/>
+    </clipPath>
+  </defs>
+
+  <!-- Background -->
+  <circle cx="100" cy="100" r="100" fill="url(#bgN)"/>
+
+  <!-- Soft background sparkles -->
+  <circle cx="30" cy="35" r="3" fill="#e879f9" opacity="0.35"/>
+  <circle cx="170" cy="25" r="2" fill="#a78bfa" opacity="0.4"/>
+  <circle cx="165" cy="155" r="2.5" fill="#f9a8d4" opacity="0.3"/>
+  <circle cx="22" cy="140" r="2" fill="#c4b5fd" opacity="0.4"/>
+
+  <!-- Body / Kurti top -->
+  <path d="M 35 200 Q 40 165 70 152 L 88 148 L 100 158 L 112 148 L 130 152 Q 160 165 165 200 Z" fill="#818cf8"/>
+  <path d="M 88 148 L 100 168 L 112 148 L 100 158 Z" fill="#6366f1"/>
+  <!-- Kurti pattern dots -->
+  <circle cx="78" cy="162" r="2.5" fill="white" opacity="0.4"/>
+  <circle cx="122" cy="162" r="2.5" fill="white" opacity="0.4"/>
+  <circle cx="68" cy="175" r="2" fill="white" opacity="0.3"/>
+  <circle cx="132" cy="175" r="2" fill="white" opacity="0.3"/>
+
+  <!-- Neck -->
+  <rect x="87" y="142" width="26" height="20" rx="9" fill="url(#skinN)"/>
+
+  <!-- Hair sides (behind head) -->
+  <path d="M 63 100 Q 55 130 60 152 Q 68 162 80 155" fill="#1e1240" opacity="0.95"/>
+  <path d="M 137 100 Q 145 130 140 152 Q 132 162 120 155" fill="#1e1240" opacity="0.95"/>
+
+  <!-- Head -->
+  <ellipse cx="100" cy="112" rx="37" ry="40" fill="url(#skinN)"/>
+
+  <!-- Hair top -->
+  <path d="M 63 100 Q 60 75 75 63 Q 88 55 100 53 Q 112 55 125 63 Q 140 75 137 100 Q 128 85 100 82 Q 72 85 63 100 Z" fill="#1e1240"/>
+  <!-- Hair shine -->
+  <path d="M 80 60 Q 95 55 112 60" stroke="#4c3b8a" stroke-width="3" fill="none" stroke-linecap="round" opacity="0.5"/>
+  <!-- Parting line -->
+  <path d="M 98 53 L 100 75" stroke="#2d1b69" stroke-width="1.5" fill="none" opacity="0.6"/>
+
+  <!-- Ears -->
+  <ellipse cx="63" cy="113" rx="7" ry="9" fill="url(#skinN)"/>
+  <ellipse cx="137" cy="113" rx="7" ry="9" fill="url(#skinN)"/>
+  <!-- Small earrings -->
+  <circle cx="63" cy="118" r="3" fill="#a78bfa"/>
+  <circle cx="137" cy="118" r="3" fill="#a78bfa"/>
+  <circle cx="63" cy="118" r="1.5" fill="#e9d5ff"/>
+  <circle cx="137" cy="118" r="1.5" fill="#e9d5ff"/>
+
+  <!-- Eyes whites -->
+  <ellipse cx="86" cy="111" rx="9.5" ry="10.5" fill="white"/>
+  <ellipse cx="114" cy="111" rx="9.5" ry="10.5" fill="white"/>
+  <!-- Iris -->
+  <circle cx="86" cy="112" r="6.5" fill="#3730a3"/>
+  <circle cx="114" cy="112" r="6.5" fill="#3730a3"/>
+  <!-- Pupil -->
+  <circle cx="86" cy="112" r="4" fill="#0f0a2e"/>
+  <circle cx="114" cy="112" r="4" fill="#0f0a2e"/>
+  <!-- Eye shine (main) -->
+  <circle cx="88.5" cy="110" r="2.2" fill="white"/>
+  <circle cx="116.5" cy="110" r="2.2" fill="white"/>
+  <!-- Eye shine (small) -->
+  <circle cx="84" cy="114" r="1" fill="white" opacity="0.7"/>
+  <circle cx="112" cy="114" r="1" fill="white" opacity="0.7"/>
+
+  <!-- Upper eyelashes -->
+  <path d="M 76.5 103 Q 86 99 95.5 103" stroke="#1e1240" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+  <path d="M 104.5 103 Q 114 99 123.5 103" stroke="#1e1240" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+
+  <!-- Cute glasses -->
+  <rect x="75" y="104" width="21" height="15" rx="5" fill="rgba(124,58,237,0.1)" stroke="#7c3aed" stroke-width="2.2"/>
+  <rect x="104" y="104" width="21" height="15" rx="5" fill="rgba(124,58,237,0.1)" stroke="#7c3aed" stroke-width="2.2"/>
+  <line x1="96" y1="111.5" x2="104" y2="111.5" stroke="#7c3aed" stroke-width="2"/>
+  <line x1="75" y1="111.5" x2="67" y2="109" stroke="#7c3aed" stroke-width="2" stroke-linecap="round"/>
+  <line x1="125" y1="111.5" x2="133" y2="109" stroke="#7c3aed" stroke-width="2" stroke-linecap="round"/>
+  <!-- Glasses lens glint -->
+  <path d="M 78 107 L 83 107" stroke="white" stroke-width="1.5" opacity="0.6" stroke-linecap="round"/>
+  <path d="M 107 107 L 112 107" stroke="white" stroke-width="1.5" opacity="0.6" stroke-linecap="round"/>
+
+  <!-- Nose -->
+  <path d="M 97 124 Q 100 128 103 124" stroke="#d97706" stroke-width="1.5" fill="none" stroke-linecap="round" opacity="0.5"/>
+
+  <!-- Sweet smile -->
+  <path d="M 88 134 Q 100 146 112 134" stroke="#b45309" stroke-width="2.8" fill="none" stroke-linecap="round"/>
+  <!-- Smile dimples -->
+  <circle cx="86" cy="133" r="2" fill="#f9a8d4" opacity="0.6"/>
+  <circle cx="114" cy="133" r="2" fill="#f9a8d4" opacity="0.6"/>
+
+  <!-- Rosy cheeks -->
+  <ellipse cx="72" cy="127" rx="11" ry="7" fill="#f9a8d4" opacity="0.42"/>
+  <ellipse cx="128" cy="127" rx="11" ry="7" fill="#f9a8d4" opacity="0.42"/>
+
+  <!-- Small cute hair strand on forehead -->
+  <path d="M 87 75 Q 83 68 88 62" stroke="#1e1240" stroke-width="5" fill="none" stroke-linecap="round"/>
+</svg>
