@@ -420,6 +420,11 @@ export const CHARACTERS: Record<BuiltInCharacterId, CharacterConfig> = {
   },
 };
 
+const FORMAT_RULES = `\n\nFORMATTING — this is a chat bubble, not a document:
+- Plain text only. NEVER use markdown syntax — no **bold**, no # headings, no backtick code blocks, no bullet/numbered lists.
+- If you want to emphasize something, just say it plainly or use CAPS sparingly — don't wrap words in asterisks.
+- Write in short plain sentences and line breaks only, exactly like a real text message.`;
+
 export function buildSystemPrompt(
   character: CharacterConfig,
   memoryContext: string,
@@ -434,5 +439,8 @@ export function buildSystemPrompt(
     ? `\n\n[What you know about this person from past conversations]\n${memoryContext}\n[Use this naturally — don't reference "memory", just let it inform how you talk]`
     : '';
 
-  return character.systemPrompt.replace('{{MEMORY}}', nameSection + memorySection + (extraContext ?? ''));
+  return character.systemPrompt.replace(
+    '{{MEMORY}}',
+    FORMAT_RULES + nameSection + memorySection + (extraContext ?? '')
+  );
 }

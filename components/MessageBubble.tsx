@@ -3,6 +3,7 @@
 import Image from 'next/image';
 import type { Message } from '@/lib/types';
 import type { CharacterConfig } from '@/lib/characters';
+import { stripMarkdown } from '@/lib/textFormat';
 
 interface MessageBubbleProps {
   message: Message;
@@ -171,7 +172,7 @@ function MessageContent({ text, isStreaming }: { text: string; isStreaming?: boo
     }
   });
 
-  const combinedText = textParts.join('').trim();
+  const combinedText = stripMarkdown(textParts.join('')).trim();
 
   return (
     <span className={isStreaming ? 'cursor-blink' : ''}>

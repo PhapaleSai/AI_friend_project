@@ -1,6 +1,7 @@
 'use client';
 
 import type { VoiceSettings } from './characters';
+import { stripMarkdown } from './textFormat';
 
 type SpeechCallbacks = {
   onStart?: () => void;
@@ -13,7 +14,7 @@ export function isSpeechSynthesisSupported(): boolean {
 }
 
 function stripEmojisAndClean(text: string): string {
-  return text
+  return stripMarkdown(text)
     // Remove URLs entirely (don't read them aloud)
     .replace(/https?:\/\/[^\s\n]+/g, '')
     // Remove all emoji ranges
