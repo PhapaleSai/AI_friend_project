@@ -1,20 +1,46 @@
 import Groq from 'groq-sdk';
 import { CHARACTERS, buildSystemPrompt } from '@/lib/characters';
 import type { CharacterId } from '@/lib/characters';
+import { shouldSearch, searchWeb, buildSearchContext } from '@/lib/search';
+import { toneInstruction, type UserProfile } from '@/lib/profile';
+import { SOURCES_DELIMITER } from '@/lib/constants';
 
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
 export async function POST(req: Request) {
   try {
-    const { messages, characterId, memoryContext, userName } = await req.json() as {
+    const {
+      messages, characterId, memoryContext, userName, mood, tone, customSystemPrompt,
+    } = await req.json() as {
       messages: { role: 'user' | 'assistant'; content: string }[];
       characterId: CharacterId;
       memoryContext?: string;
       userName?: string;
+      mood?: string;
+      tone?: UserProfile['tone'];
+      customSystemPrompt?: string;
     };
 
-    const character = CHARACTERS[characterId] ?? CHARACTERS.naina;
-    const systemPrompt = buildSystemPrompt(character, memoryContext ?? '', userName ?? '');
+    const character = CHARACTERS[characterId as keyof typeof CHARACTERS] ?? CHARACTERS.naina;
+    const effectiveCharacter = customSystemPrompt
+      ? { ...character, systemPrompt: `${customSystemPrompt}\n\n{{MEMORY}}` }
+      : character;
+
+    let extraContext = '';
+    if (mood) extraContext += `\n\nThe user's current mood check-in: ${mood}. Let this subtly inform your tone, without explicitly mentioning "mood check-in".`;
+    if (tone) {
+      const instruction = toneInstruction(tone);
+      if (instruction) extraContext += `\n\n${instruction}`;
+    }
+
+    const lastUserMessage = [...messages].reverse().find((m) => m.role === 'user')?.content ?? '';
+    let sources: { title: string; url: string; source?: string }[] = [];
+    if (lastUserMessage && shouldSearch(lastUserMessage)) {
+      sources = await searchWeb(lastUserMessage);
+      extraContext += buildSearchContext(lastUserMessage, sources);
+    }
+
+    const systemPrompt = buildSystemPrompt(effectiveCharacter, memoryContext ?? '', userName ?? '', extraContext);
 
     const encoder = new TextEncoder();
 
@@ -50,6 +76,9 @@ export async function POST(req: Request) {
           for await (const chunk of groqStream) {
             const text = chunk.choices[0]?.delta?.content ?? '';
             if (text) controller.enqueue(encoder.encode(text));
+          }
+          if (sources.length > 0) {
+            controller.enqueue(encoder.encode(SOURCES_DELIMITER + JSON.stringify(sources)));
           }
           controller.close();
         } catch (err) {

@@ -8,12 +8,6 @@ type SpeechCallbacks = {
   onError?: (e: string) => void;
 };
 
-type RecognitionCallbacks = {
-  onResult: (text: string, isFinal: boolean) => void;
-  onEnd: () => void;
-  onError: (error: string) => void;
-};
-
 export function isSpeechSynthesisSupported(): boolean {
   return typeof window !== 'undefined' && 'speechSynthesis' in window;
 }
@@ -35,10 +29,8 @@ function stripEmojisAndClean(text: string): string {
     .trim();
 }
 
-export function isSpeechRecognitionSupported(): boolean {
-  if (typeof window === 'undefined') return false;
-  const w = window as unknown as Record<string, unknown>;
-  return !!(w.SpeechRecognition || w.webkitSpeechRecognition);
+export function isMicSupported(): boolean {
+  return typeof window !== 'undefined' && !!navigator.mediaDevices?.getUserMedia && typeof MediaRecorder !== 'undefined';
 }
 
 const FEMALE_SIGNALS = ['female', 'woman', 'girl', 'samantha', 'zira', 'victoria', 'karen', 'susan', 'fiona', 'moira', 'tessa', 'veena', 'allison', 'ava', 'kate', 'serena', 'rishi'];
@@ -168,31 +160,76 @@ export function stopSpeaking(): void {
   }
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type AnyRecognition = any;
+export interface RecordingHandle {
+  /** Stops recording and resolves with the recorded audio blob. */
+  stop: () => Promise<Blob>;
+  /** Aborts recording without producing a usable result. */
+  cancel: () => void;
+}
 
-export function startListening(callbacks: RecognitionCallbacks): (() => void) | null {
-  if (!isSpeechRecognitionSupported()) {
-    callbacks.onError('Speech recognition not supported. Try Chrome on Android or desktop.');
-    return null;
+/**
+ * Starts recording microphone audio via MediaRecorder. Optionally reports a
+ * live 0–1 amplitude level (via Web Audio's AnalyserNode) for a waveform UI.
+ */
+export async function startRecording(onLevel?: (level: number) => void): Promise<RecordingHandle> {
+  const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+  const mediaRecorder = new MediaRecorder(stream);
+  const chunks: BlobPart[] = [];
+  mediaRecorder.ondataavailable = (e) => { if (e.data.size > 0) chunks.push(e.data); };
+
+  let rafId: number | null = null;
+  let audioCtx: AudioContext | null = null;
+
+  if (onLevel) {
+    audioCtx = new AudioContext();
+    const source = audioCtx.createMediaStreamSource(stream);
+    const analyser = audioCtx.createAnalyser();
+    analyser.fftSize = 256;
+    source.connect(analyser);
+    const data = new Uint8Array(analyser.frequencyBinCount);
+    const tick = () => {
+      analyser.getByteFrequencyData(data);
+      const avg = data.reduce((a, b) => a + b, 0) / data.length;
+      onLevel(Math.min(1, avg / 110));
+      rafId = requestAnimationFrame(tick);
+    };
+    tick();
   }
 
-  const win = window as unknown as Record<string, AnyRecognition>;
-  const SR: AnyRecognition = win.SpeechRecognition || win.webkitSpeechRecognition;
-  const recognition: AnyRecognition = new SR();
+  mediaRecorder.start();
 
-  recognition.continuous = false;
-  recognition.interimResults = true;
-  recognition.lang = 'en-IN';
-  recognition.maxAlternatives = 1;
-
-  recognition.onresult = (event: AnyRecognition) => {
-    const result = event.results[event.results.length - 1];
-    callbacks.onResult(result[0].transcript as string, result.isFinal as boolean);
+  const cleanup = () => {
+    if (rafId !== null) cancelAnimationFrame(rafId);
+    audioCtx?.close().catch(() => { /* ignore */ });
+    stream.getTracks().forEach((t) => t.stop());
   };
-  recognition.onend   = () => callbacks.onEnd();
-  recognition.onerror = (event: AnyRecognition) => callbacks.onError(event.error as string);
 
-  recognition.start();
-  return () => { try { recognition.stop(); } catch { /* ignore */ } };
+  return {
+    stop: () => new Promise<Blob>((resolve) => {
+      mediaRecorder.onstop = () => {
+        cleanup();
+        resolve(new Blob(chunks, { type: mediaRecorder.mimeType || 'audio/webm' }));
+      };
+      if (mediaRecorder.state !== 'inactive') mediaRecorder.stop();
+    }),
+    cancel: () => {
+      mediaRecorder.onstop = null;
+      try { if (mediaRecorder.state !== 'inactive') mediaRecorder.stop(); } catch { /* ignore */ }
+      cleanup();
+    },
+  };
+}
+
+/** Sends recorded audio to /api/transcribe (Groq Whisper) and returns the transcript. */
+export async function transcribeAudio(blob: Blob): Promise<string> {
+  try {
+    const formData = new FormData();
+    formData.append('audio', blob, 'voice-note.webm');
+    const res = await fetch('/api/transcribe', { method: 'POST', body: formData });
+    if (!res.ok) return '';
+    const data = await res.json() as { text?: string };
+    return data.text ?? '';
+  } catch {
+    return '';
+  }
 }

@@ -7,12 +7,18 @@ interface VoiceOrbProps {
   state: OrbState;
   theme: CharacterTheme;
   onClick?: () => void;
+  onPointerDown?: (e: React.PointerEvent) => void;
+  onPointerUp?: (e: React.PointerEvent) => void;
+  onPointerLeave?: (e: React.PointerEvent) => void;
+  onPointerCancel?: (e: React.PointerEvent) => void;
   size?: 'sm' | 'md' | 'lg';
 }
 
 const SIZE_MAP = { sm: 52, md: 104, lg: 148 };
 
-export default function VoiceOrb({ state, theme, onClick, size = 'lg' }: VoiceOrbProps) {
+export default function VoiceOrb({
+  state, theme, onClick, onPointerDown, onPointerUp, onPointerLeave, onPointerCancel, size = 'lg',
+}: VoiceOrbProps) {
   const px = SIZE_MAP[size];
 
   const orbBg = (() => {
@@ -94,6 +100,10 @@ export default function VoiceOrb({ state, theme, onClick, size = 'lg' }: VoiceOr
       {/* Main orb */}
       <button
         onClick={onClick}
+        onPointerDown={onPointerDown}
+        onPointerUp={onPointerUp}
+        onPointerLeave={onPointerLeave}
+        onPointerCancel={onPointerCancel}
         className="relative rounded-full flex items-center justify-center overflow-hidden focus:outline-none"
         style={{
           width: px,

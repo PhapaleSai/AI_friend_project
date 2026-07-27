@@ -1,0 +1,81 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
+  <defs>
+    <radialGradient id="bgA" cx="50%" cy="30%" r="80%">
+      <stop offset="0%" stop-color="#ecfeff"/>
+      <stop offset="100%" stop-color="#38bdf8"/>
+    </radialGradient>
+    <radialGradient id="skinA" cx="40%" cy="35%" r="60%">
+      <stop offset="0%" stop-color="#fde8d0"/>
+      <stop offset="100%" stop-color="#eec19a"/>
+    </radialGradient>
+  </defs>
+
+  <circle cx="100" cy="100" r="100" fill="url(#bgA)"/>
+
+  <!-- Background code-y accents -->
+  <circle cx="30" cy="38" r="3" fill="#22d3ee" opacity="0.35"/>
+  <circle cx="170" cy="28" r="2" fill="#0ea5e9" opacity="0.4"/>
+  <circle cx="168" cy="158" r="2.5" fill="#67e8f9" opacity="0.3"/>
+
+  <!-- Hoodie body -->
+  <path d="M 32 200 Q 40 162 72 150 L 90 146 L 100 158 L 110 146 L 128 150 Q 160 162 168 200 Z" fill="#0f172a"/>
+  <path d="M 90 146 L 100 168 L 110 146 L 100 158 Z" fill="#1e293b"/>
+  <!-- Hoodie drawstrings -->
+  <line x1="93" y1="158" x2="91" y2="176" stroke="#334155" stroke-width="2.2" stroke-linecap="round"/>
+  <line x1="107" y1="158" x2="109" y2="176" stroke="#334155" stroke-width="2.2" stroke-linecap="round"/>
+  <circle cx="91" cy="177" r="2" fill="#475569"/>
+  <circle cx="109" cy="177" r="2" fill="#475569"/>
+  <!-- Hood collar -->
+  <path d="M 80 148 Q 100 162 120 148 L 116 156 Q 100 168 84 156 Z" fill="#1e293b"/>
+
+  <!-- Neck -->
+  <rect x="87" y="141" width="26" height="18" rx="9" fill="url(#skinA)"/>
+
+  <!-- Hair (behind head) -->
+  <path d="M 63 100 Q 56 122 61 144 Q 70 152 80 147" fill="#2b1b12"/>
+  <path d="M 137 100 Q 144 122 139 144 Q 130 152 120 147" fill="#2b1b12"/>
+
+  <!-- Head -->
+  <ellipse cx="100" cy="110" rx="37" ry="40" fill="url(#skinA)"/>
+
+  <!-- Short neat hair top -->
+  <path d="M 63 100 Q 60 76 75 65 Q 88 58 100 56 Q 112 58 125 65 Q 140 76 137 100 Q 128 84 100 82 Q 72 84 63 100 Z" fill="#2b1b12"/>
+  <path d="M 83 62 Q 95 57 112 62" stroke="#4a3324" stroke-width="2.2" fill="none" stroke-linecap="round" opacity="0.5"/>
+
+  <!-- Ears -->
+  <ellipse cx="63" cy="112" rx="7" ry="9" fill="url(#skinA)"/>
+  <ellipse cx="137" cy="112" rx="7" ry="9" fill="url(#skinA)"/>
+
+  <!-- Eyes whites -->
+  <ellipse cx="86" cy="110" rx="9" ry="9.5" fill="white"/>
+  <ellipse cx="114" cy="110" rx="9" ry="9.5" fill="white"/>
+  <!-- Iris -->
+  <circle cx="86" cy="111" r="6" fill="#164e63"/>
+  <circle cx="114" cy="111" r="6" fill="#164e63"/>
+  <!-- Pupil -->
+  <circle cx="86" cy="111" r="3.6" fill="#04101a"/>
+  <circle cx="114" cy="111" r="3.6" fill="#04101a"/>
+  <!-- Shine -->
+  <circle cx="88" cy="109" r="2" fill="white"/>
+  <circle cx="116" cy="109" r="2" fill="white"/>
+
+  <!-- Rectangular tech glasses -->
+  <rect x="74" y="102" width="23" height="16" rx="4" fill="rgba(14,165,233,0.10)" stroke="#0ea5e9" stroke-width="2.4"/>
+  <rect x="103" y="102" width="23" height="16" rx="4" fill="rgba(14,165,233,0.10)" stroke="#0ea5e9" stroke-width="2.4"/>
+  <line x1="97" y1="110" x2="103" y2="110" stroke="#0ea5e9" stroke-width="2.2"/>
+  <line x1="74" y1="109" x2="65" y2="106" stroke="#0ea5e9" stroke-width="2.2" stroke-linecap="round"/>
+  <line x1="126" y1="109" x2="135" y2="106" stroke="#0ea5e9" stroke-width="2.2" stroke-linecap="round"/>
+
+  <!-- Eyebrows -->
+  <path d="M 76 96 Q 85 92 94 95" stroke="#2b1b12" stroke-width="2.6" fill="none" stroke-linecap="round"/>
+  <path d="M 106 95 Q 115 92 124 96" stroke="#2b1b12" stroke-width="2.6" fill="none" stroke-linecap="round"/>
+
+  <!-- Nose -->
+  <path d="M 97 123 Q 100 127 103 123" stroke="#c48a5c" stroke-width="1.6" fill="none" stroke-linecap="round" opacity="0.55"/>
+
+  <!-- Light stubble -->
+  <ellipse cx="100" cy="136" rx="27" ry="9" fill="#7c5333" opacity="0.10"/>
+
+  <!-- Friendly grin -->
+  <path d="M 87 132 Q 100 143 113 132" stroke="#8a4d26" stroke-width="2.8" fill="none" stroke-linecap="round"/>
+</svg>

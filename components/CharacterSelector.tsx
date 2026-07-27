@@ -1,11 +1,13 @@
 'use client';
 
 import Image from 'next/image';
-import { CHARACTERS, type CharacterId, type CharacterConfig } from '@/lib/characters';
+import type { CharacterId, CharacterConfig } from '@/lib/characters';
 
 interface CharacterSelectorProps {
   selected: CharacterId;
   onChange: (id: CharacterId) => void;
+  characters: CharacterConfig[];
+  onCreateNew?: () => void;
 }
 
 function CharacterCard({
@@ -76,16 +78,16 @@ function CharacterCard({
   );
 }
 
-export default function CharacterSelector({ selected, onChange }: CharacterSelectorProps) {
+export default function CharacterSelector({ selected, onChange, characters, onCreateNew }: CharacterSelectorProps) {
   return (
     <div
-      className="flex items-center p-1 rounded-2xl gap-1"
+      className="flex items-center p-1 rounded-2xl gap-1 overflow-x-auto"
       style={{
         background: 'rgba(255,255,255,0.03)',
         border: '1px solid rgba(255,255,255,0.06)',
       }}
     >
-      {(Object.values(CHARACTERS) as CharacterConfig[]).map((character) => (
+      {characters.map((character) => (
         <CharacterCard
           key={character.id}
           character={character}
@@ -93,6 +95,16 @@ export default function CharacterSelector({ selected, onChange }: CharacterSelec
           onClick={() => onChange(character.id)}
         />
       ))}
+      {onCreateNew && (
+        <button
+          onClick={onCreateNew}
+          className="flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center text-slate-500
+                     hover:text-white hover:bg-white/8 transition-all duration-200 focus:outline-none"
+          title="Create a custom AI friend"
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
+        </button>
+      )}
     </div>
   );
 }

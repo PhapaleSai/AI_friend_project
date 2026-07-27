@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from 'next';
 import './globals.css';
+import ServiceWorkerRegister from '@/components/ServiceWorkerRegister';
 
 export const metadata: Metadata = {
   title: 'Friend AI — Naina & Bunny',
@@ -33,6 +34,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body>
         <div className="starfield" aria-hidden="true" />
         <div className="grain" aria-hidden="true" />
+        <ServiceWorkerRegister />
         {children}
       </body>
     </html>

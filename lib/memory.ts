@@ -5,26 +5,33 @@ import type { CharacterId } from './characters';
 
 const STORAGE_KEY = (id: CharacterId) => `friend-ai-${id}-v2`;
 const MAX_STORED = 40;
+const MAX_FACTS = 14;
 
 export function loadConversation(characterId: CharacterId): StoredConversation {
   if (typeof window === 'undefined') return empty();
   try {
     const raw = localStorage.getItem(STORAGE_KEY(characterId));
     if (!raw) return empty();
-    const parsed = JSON.parse(raw) as StoredConversation;
-    return parsed;
+    const parsed = JSON.parse(raw) as Partial<StoredConversation> & { memoryContext?: string };
+    // Back-compat: older versions stored a single joined `memoryContext` string.
+    const memoryFacts = parsed.memoryFacts ?? (parsed.memoryContext ? parsed.memoryContext.split('. ').map((s) => s.replace(/\.$/, '').trim()).filter(Boolean) : []);
+    return {
+      messages: parsed.messages ?? [],
+      lastUpdated: parsed.lastUpdated ?? '',
+      memoryFacts,
+    };
   } catch {
     return empty();
   }
 }
 
-export function saveConversation(characterId: CharacterId, messages: Message[], memoryContext: string): void {
+export function saveConversation(characterId: CharacterId, messages: Message[], memoryFacts: string[]): void {
   if (typeof window === 'undefined') return;
   try {
     const toStore: StoredConversation = {
       messages: messages.slice(-MAX_STORED),
       lastUpdated: new Date().toISOString(),
-      memoryContext,
+      memoryFacts: memoryFacts.slice(0, MAX_FACTS),
     };
     localStorage.setItem(STORAGE_KEY(characterId), JSON.stringify(toStore));
   } catch {
@@ -38,16 +45,36 @@ export function clearConversation(characterId: CharacterId): void {
 }
 
 function empty(): StoredConversation {
-  return { messages: [], lastUpdated: '', memoryContext: '' };
+  return { messages: [], lastUpdated: '', memoryFacts: [] };
+}
+
+/** Joins fact bullets into the prose block injected into the system prompt. */
+export function joinFacts(facts: string[]): string {
+  return facts.length > 0 ? facts.join('. ') + '.' : '';
+}
+
+/** Merges new facts into existing ones, deduping case-insensitively and capping length. */
+export function mergeFacts(existing: string[], incoming: string[]): string[] {
+  const seen = new Set(existing.map((f) => f.toLowerCase()));
+  const merged = [...existing];
+  for (const fact of incoming) {
+    const key = fact.toLowerCase();
+    if (fact.trim() && !seen.has(key)) {
+      seen.add(key);
+      merged.push(fact.trim());
+    }
+  }
+  return merged.slice(-MAX_FACTS);
 }
 
 /**
  * Builds a compact memory context string by scanning messages for
  * mentions of user interests, preferences, and important facts.
  * This is injected into the system prompt so the AI "remembers" the user.
+ * Cheap synchronous fallback — see extractFactsWithLLM for the smarter version.
  */
-export function buildMemoryContext(messages: Message[]): string {
-  if (messages.length < 4) return '';
+export function buildMemoryContext(messages: Message[]): string[] {
+  if (messages.length < 4) return [];
 
   const userMessages = messages
     .filter((m) => m.role === 'user')
@@ -98,5 +125,27 @@ export function buildMemoryContext(messages: Message[]): string {
     notes.push('User tends to be positive and enthusiastic');
   }
 
-  return notes.length > 0 ? notes.join('. ') + '.' : '';
+  return notes;
+}
+
+/**
+ * Background LLM fact extraction — calls /api/extract-facts with the recent
+ * conversation and gets back a short list of concrete facts worth remembering.
+ * Non-blocking; caller should merge results with mergeFacts() and not await
+ * this on the critical path of sending a message.
+ */
+export async function extractFactsWithLLM(messages: Message[]): Promise<string[]> {
+  try {
+    const recent = messages.slice(-16).map((m) => ({ role: m.role, content: m.content }));
+    const res = await fetch('/api/extract-facts', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ messages: recent }),
+    });
+    if (!res.ok) return [];
+    const data = await res.json() as { facts?: string[] };
+    return Array.isArray(data.facts) ? data.facts.filter((f) => typeof f === 'string') : [];
+  } catch {
+    return [];
+  }
 }

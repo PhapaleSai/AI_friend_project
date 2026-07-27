@@ -3,6 +3,8 @@
 import { useState, useEffect, useRef } from 'react';
 import Image from 'next/image';
 import { CHARACTERS, type CharacterId, type CharacterConfig } from '@/lib/characters';
+import { getAllCharacters } from '@/lib/customCharacters';
+import CharacterCreator from './CharacterCreator';
 
 const NAME_KEY = 'friend-ai-username';
 
@@ -76,7 +78,7 @@ function CharacterCard({ character, onSelect, index, disabled }: {
   return (
     <div
       ref={cardRef}
-      className="relative flex-1 min-w-0 cursor-pointer select-none"
+      className="relative w-full sm:w-[250px] flex-shrink-0 cursor-pointer select-none"
       style={{
         animation: `slide-up 0.7s ${300 + index * 160}ms cubic-bezier(0.16,1,0.3,1) both`,
         opacity: disabled ? 0.4 : 1,
@@ -242,16 +244,41 @@ function CharacterCard({ character, onSelect, index, disabled }: {
   );
 }
 
+/* ─── Create-new card ─────────────────────────────────────────── */
+function CreateCard({ onClick, index, disabled }: { onClick: () => void; index: number; disabled: boolean }) {
+  return (
+    <button
+      onClick={disabled ? undefined : onClick}
+      disabled={disabled}
+      className="relative w-full sm:w-[250px] flex-shrink-0 rounded-3xl flex flex-col items-center justify-center gap-3 py-10 px-4 focus:outline-none transition-opacity duration-300"
+      style={{
+        animation: `slide-up 0.7s ${300 + index * 160}ms cubic-bezier(0.16,1,0.3,1) both`,
+        background: 'rgba(13,13,26,0.6)',
+        border: '2px dashed rgba(255,255,255,0.15)',
+        opacity: disabled ? 0.4 : 1,
+      }}
+    >
+      <div className="w-12 h-12 rounded-full flex items-center justify-center" style={{ background: 'rgba(255,255,255,0.06)' }}>
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" className="text-slate-400"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
+      </div>
+      <p className="text-sm font-semibold text-slate-300">Create your own AI friend</p>
+    </button>
+  );
+}
+
 /* ─── Main page ──────────────────────────────────────────────── */
 export default function WelcomePage({ onSelect }: WelcomePageProps) {
   const [ready, setReady]               = useState(false);
   const [name, setName]                 = useState('');
   const [nameSubmitted, setNameSubmitted] = useState(false);
+  const [allCharacters, setAllCharacters] = useState<CharacterConfig[]>(Object.values(CHARACTERS));
+  const [showCreator, setShowCreator]   = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const saved = localStorage.getItem(NAME_KEY) ?? '';
     if (saved) { setName(saved); setNameSubmitted(true); }
+    setAllCharacters(Object.values(getAllCharacters()));
     const t = setTimeout(() => setReady(true), 60);
     return () => clearTimeout(t);
   }, []);
@@ -316,7 +343,7 @@ export default function WelcomePage({ onSelect }: WelcomePageProps) {
         <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full mb-5"
           style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)' }}>
           <div className="flex -space-x-2">
-            {(['naina', 'bunny'] as CharacterId[]).map((id) => (
+            {(['naina', 'bunny'] as const).map((id) => (
               <div key={id} className="w-5 h-5 rounded-full overflow-hidden ring-1 ring-black/50">
                 <Image src={CHARACTERS[id].avatar} alt={id} width={20} height={20}
                   className="w-full h-full object-cover"
@@ -415,8 +442,8 @@ export default function WelcomePage({ onSelect }: WelcomePageProps) {
       </div>
 
       {/* ── Character cards ── */}
-      <div className="relative z-10 flex flex-col sm:flex-row gap-5 w-full max-w-[580px]">
-        {(Object.values(CHARACTERS) as CharacterConfig[]).map((char, i) => (
+      <div className="relative z-10 flex flex-col sm:flex-row flex-wrap justify-center gap-5 w-full max-w-[900px]">
+        {allCharacters.map((char, i) => (
           <CharacterCard
             key={char.id}
             character={char}
@@ -425,7 +452,23 @@ export default function WelcomePage({ onSelect }: WelcomePageProps) {
             disabled={!nameSubmitted}
           />
         ))}
+        <CreateCard
+          onClick={() => setShowCreator(true)}
+          index={allCharacters.length}
+          disabled={!nameSubmitted}
+        />
       </div>
+
+      {showCreator && (
+        <CharacterCreator
+          onClose={() => setShowCreator(false)}
+          onCreated={(config) => {
+            setShowCreator(false);
+            setAllCharacters(Object.values(getAllCharacters()));
+            handleSelect(config.id);
+          }}
+        />
+      )}
 
       {!nameSubmitted && (
         <p className="relative z-10 mt-5 text-slate-600 text-xs animate-pulse">
