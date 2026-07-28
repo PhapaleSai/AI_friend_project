@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import Image from 'next/image';
 import type { Message } from '@/lib/types';
 import type { CharacterConfig } from '@/lib/characters';
@@ -225,6 +226,89 @@ function ReplayVoiceButton({ isSpeaking, onToggle, color }: { isSpeaking: boolea
   );
 }
 
+function EmailDraftCard({ draft, color }: { draft: NonNullable<Message['emailDraft']>; color: string }) {
+  const [to, setTo] = useState(draft.to);
+  const [subject, setSubject] = useState(draft.subject);
+  const [body, setBody] = useState(draft.body);
+  const [status, setStatus] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle');
+  const [error, setError] = useState('');
+
+  const isValidTo = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(to);
+
+  const handleSend = async () => {
+    setStatus('sending');
+    setError('');
+    try {
+      const res = await fetch('/api/send-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ to, subject, body }),
+      });
+      const data = await res.json() as { success: boolean; error?: string };
+      if (data.success) {
+        setStatus('sent');
+      } else {
+        setStatus('error');
+        setError(data.error || 'Failed to send.');
+      }
+    } catch {
+      setStatus('error');
+      setError('Failed to reach the server.');
+    }
+  };
+
+  if (status === 'sent') {
+    return (
+      <div className="mt-2.5 px-3 py-2.5 rounded-xl text-xs font-medium flex items-center gap-2"
+        style={{ background: 'rgba(34,197,94,0.12)', border: '1px solid rgba(74,222,128,0.35)', color: '#4ade80' }}>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
+        Email sent to {to}
+      </div>
+    );
+  }
+
+  return (
+    <div className="mt-2.5 p-3 rounded-xl flex flex-col gap-2"
+      style={{ background: 'rgba(255,255,255,0.05)', border: `1px solid ${color}30`, maxWidth: 280 }}>
+      <p className="text-[10px] font-semibold uppercase tracking-wide" style={{ color }}>Email draft — review before sending</p>
+
+      <input
+        value={to}
+        onChange={(e) => setTo(e.target.value)}
+        placeholder="recipient@email.com"
+        className="w-full px-2 py-1.5 rounded-lg text-xs text-white placeholder-slate-600 focus:outline-none"
+        style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)' }}
+      />
+      <input
+        value={subject}
+        onChange={(e) => setSubject(e.target.value)}
+        placeholder="Subject"
+        className="w-full px-2 py-1.5 rounded-lg text-xs text-white placeholder-slate-600 focus:outline-none"
+        style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)' }}
+      />
+      <textarea
+        value={body}
+        onChange={(e) => setBody(e.target.value)}
+        rows={4}
+        className="w-full px-2 py-1.5 rounded-lg text-xs text-white placeholder-slate-600 focus:outline-none resize-none"
+        style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)' }}
+      />
+
+      {status === 'error' && <p className="text-[11px] text-red-400">{error}</p>}
+      {!isValidTo && to.length > 0 && <p className="text-[11px] text-amber-400">Enter a valid email address.</p>}
+
+      <button
+        onClick={handleSend}
+        disabled={!isValidTo || !body.trim() || status === 'sending'}
+        className="w-full py-2 rounded-lg text-xs font-bold text-white transition-all duration-150 active:scale-95 focus:outline-none disabled:opacity-40"
+        style={{ background: color }}
+      >
+        {status === 'sending' ? 'Sending...' : 'Send email'}
+      </button>
+    </div>
+  );
+}
+
 export default function MessageBubble({ message, character, showAvatar = true, isSpeaking = false, onToggleSpeak }: MessageBubbleProps) {
   const isUser = message.role === 'user';
   const { theme } = character;
@@ -285,6 +369,7 @@ export default function MessageBubble({ message, character, showAvatar = true, i
               ))}
             </div>
           )}
+          {message.emailDraft && <EmailDraftCard draft={message.emailDraft} color={theme.primary} />}
         </div>
         {!message.isStreaming && message.content && onToggleSpeak && (
           <ReplayVoiceButton isSpeaking={isSpeaking} onToggle={onToggleSpeak} color={theme.primary} />

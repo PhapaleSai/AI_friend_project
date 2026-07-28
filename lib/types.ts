@@ -10,6 +10,12 @@ export interface ArticleSource {
   source?: string;
 }
 
+export interface EmailDraft {
+  to: string;
+  subject: string;
+  body: string;
+}
+
 export interface Message {
   id: string;
   role: MessageRole;
@@ -18,6 +24,7 @@ export interface Message {
   isVoiceNote?: boolean;
   audioUrl?: string;
   sources?: ArticleSource[];
+  emailDraft?: EmailDraft;
 }
 
 export type OrbState = 'idle' | 'listening' | 'thinking' | 'speaking';

@@ -15,7 +15,7 @@ import {
   joinFacts,
 } from '@/lib/memory';
 import { loadProfile, saveProfile, type UserProfile } from '@/lib/profile';
-import { SOURCES_DELIMITER } from '@/lib/constants';
+import { SOURCES_DELIMITER, EMAIL_DELIMITER } from '@/lib/constants';
 import VoiceOrb from './VoiceOrb';
 import MessageBubble from './MessageBubble';
 import InputBar from './InputBar';
@@ -208,7 +208,7 @@ export default function ChatInterface({ initialCharacter = 'naina', onBack, user
         const { done, value } = await reader.read();
         if (done) break;
         fullText += decoder.decode(value, { stream: true });
-        const displayText = fullText.split(SOURCES_DELIMITER)[0];
+        const displayText = fullText.split(SOURCES_DELIMITER)[0].split(EMAIL_DELIMITER)[0];
         setMessagesByChar((prev) => ({
           ...prev,
           [characterId]: prev[characterId].map((m) =>
@@ -217,14 +217,19 @@ export default function ChatInterface({ initialCharacter = 'naina', onBack, user
         }));
       }
 
-      const [displayText, sourcesJson] = fullText.split(SOURCES_DELIMITER);
+      const [beforeEmail, emailJson] = fullText.split(EMAIL_DELIMITER);
+      const [displayText, sourcesJson] = beforeEmail.split(SOURCES_DELIMITER);
       let sources: Message['sources'];
       if (sourcesJson) {
         try { sources = JSON.parse(sourcesJson); } catch { /* ignore malformed sources */ }
       }
+      let emailDraft: Message['emailDraft'];
+      if (emailJson) {
+        try { emailDraft = JSON.parse(emailJson); } catch { /* ignore malformed draft */ }
+      }
 
       const finalMessages = updatedMessages.map((m) =>
-        m.id === assistantId ? { ...m, content: displayText, isStreaming: false, sources } : m
+        m.id === assistantId ? { ...m, content: displayText, isStreaming: false, sources, emailDraft } : m
       );
       const regexFacts = buildMemoryContext(finalMessages);
       const mergedFacts = mergeFacts(memoryFacts, regexFacts);

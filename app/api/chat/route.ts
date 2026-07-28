@@ -2,8 +2,9 @@ import Groq from 'groq-sdk';
 import { CHARACTERS, buildSystemPrompt } from '@/lib/characters';
 import type { CharacterId } from '@/lib/characters';
 import { shouldSearch, searchWeb, buildSearchContext } from '@/lib/search';
+import { shouldDraftEmail, draftEmailFromConversation, type EmailDraft } from '@/lib/email';
 import { toneInstruction, type UserProfile } from '@/lib/profile';
-import { SOURCES_DELIMITER } from '@/lib/constants';
+import { SOURCES_DELIMITER, EMAIL_DELIMITER } from '@/lib/constants';
 
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
@@ -38,6 +39,14 @@ export async function POST(req: Request) {
     if (lastUserMessage && shouldSearch(lastUserMessage)) {
       sources = await searchWeb(lastUserMessage);
       extraContext += buildSearchContext(lastUserMessage, sources);
+    }
+
+    let emailDraft: EmailDraft | null = null;
+    if (lastUserMessage && shouldDraftEmail(lastUserMessage)) {
+      emailDraft = await draftEmailFromConversation(messages, userName ?? '');
+      if (emailDraft) {
+        extraContext += `\n\n[The user asked you to draft/send an email. A draft card with the full email will be shown separately below your reply, so just acknowledge naturally in 1 sentence — don't write out the email content yourself, and don't mention "draft card" explicitly.]`;
+      }
     }
 
     const systemPrompt = buildSystemPrompt(effectiveCharacter, memoryContext ?? '', userName ?? '', extraContext);
@@ -79,6 +88,9 @@ export async function POST(req: Request) {
           }
           if (sources.length > 0) {
             controller.enqueue(encoder.encode(SOURCES_DELIMITER + JSON.stringify(sources)));
+          }
+          if (emailDraft) {
+            controller.enqueue(encoder.encode(EMAIL_DELIMITER + JSON.stringify(emailDraft)));
           }
           controller.close();
         } catch (err) {
