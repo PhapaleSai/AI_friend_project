@@ -67,7 +67,7 @@ export default function InputBar({
   };
 
   return (
-    <div className="px-3 pb-5 pt-1.5">
+    <div className="px-2 sm:px-3 pt-1.5" style={{ paddingBottom: 'max(1.25rem, env(safe-area-inset-bottom))' }}>
       <div
         className="flex items-end gap-2 rounded-2xl px-2 py-1.5 transition-all duration-300"
         style={{
@@ -107,12 +107,12 @@ export default function InputBar({
 
         {/* Text input / live waveform while recording */}
         {isRecording ? (
-          <div className="flex-1 flex items-center gap-2.5 py-2 px-1" style={{ minHeight: 40 }}>
-            <div className="flex items-end gap-[2.5px]" style={{ height: 24 }}>
+          <div className="flex-1 min-w-0 flex items-center gap-2 py-2 px-1" style={{ minHeight: 40 }}>
+            <div className="flex items-end gap-[2px] flex-shrink-0" style={{ height: 24, maxWidth: '45%', overflow: 'hidden' }}>
               {levels.map((lvl, i) => (
                 <span
                   key={i}
-                  className="rounded-full"
+                  className="rounded-full flex-shrink-0"
                   style={{
                     width: 3,
                     height: Math.max(4, lvl * 24),
@@ -123,7 +123,7 @@ export default function InputBar({
                 />
               ))}
             </div>
-            <span className="text-xs font-medium animate-pulse" style={{ color: accentColor }}>
+            <span className="text-xs font-medium animate-pulse truncate" style={{ color: accentColor }}>
               Recording... release to send
             </span>
           </div>

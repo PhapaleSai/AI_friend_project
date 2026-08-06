@@ -8,23 +8,26 @@ interface CharacterSelectorProps {
   onChange: (id: CharacterId) => void;
   characters: CharacterConfig[];
   onCreateNew?: () => void;
+  onDelete?: (id: string) => void;
 }
 
 function CharacterCard({
   character,
   isActive,
   onClick,
+  onDelete,
 }: {
   character: CharacterConfig;
   isActive: boolean;
   onClick: () => void;
+  onDelete?: () => void;
 }) {
   const { theme } = character;
 
   return (
     <button
       onClick={onClick}
-      className="relative flex items-center gap-3 px-3 py-2 rounded-2xl transition-all duration-300 focus:outline-none"
+      className="relative flex-shrink-0 flex items-center gap-3 px-3 py-2 rounded-2xl transition-all duration-300 focus:outline-none"
       style={{
         background: isActive ? theme.tabActive : 'transparent',
         border: `1px solid ${isActive ? theme.primary + '50' : 'transparent'}`,
@@ -51,6 +54,7 @@ function CharacterCard({
             height={40}
             className="w-full h-full object-cover"
             style={{ objectPosition: character.avatarPosition }}
+            unoptimized={character.isCustom}
           />
         </div>
         {/* Online dot */}
@@ -67,24 +71,38 @@ function CharacterCard({
       {/* Name + subtitle */}
       <div className="text-left">
         <p
-          className="text-sm font-semibold leading-none transition-colors duration-200"
+          className="text-sm font-semibold leading-none transition-colors duration-200 whitespace-nowrap"
           style={{ color: isActive ? theme.primary : '#94a3b8' }}
         >
           {character.name}
         </p>
-        <p className="text-[10px] text-slate-600 mt-0.5">{character.title}</p>
+        <p className="text-[10px] text-slate-600 mt-0.5 whitespace-nowrap">{character.title}</p>
       </div>
+
+      {onDelete && (
+        <span
+          role="button"
+          tabIndex={0}
+          onClick={(e) => { e.stopPropagation(); onDelete(); }}
+          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.stopPropagation(); onDelete(); } }}
+          className="ml-0.5 flex-shrink-0 w-5 h-5 rounded-full flex items-center justify-center text-slate-500 hover:text-red-400 hover:bg-white/10 transition-all duration-150"
+          title="Delete this character"
+        >
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </span>
+      )}
     </button>
   );
 }
 
-export default function CharacterSelector({ selected, onChange, characters, onCreateNew }: CharacterSelectorProps) {
+export default function CharacterSelector({ selected, onChange, characters, onCreateNew, onDelete }: CharacterSelectorProps) {
   return (
     <div
-      className="flex items-center p-1 rounded-2xl gap-1 overflow-x-auto"
+      className="flex items-center p-1 rounded-2xl gap-1 overflow-x-auto max-w-full"
       style={{
         background: 'rgba(255,255,255,0.03)',
         border: '1px solid rgba(255,255,255,0.06)',
+        WebkitOverflowScrolling: 'touch',
       }}
     >
       {characters.map((character) => (
@@ -93,6 +111,7 @@ export default function CharacterSelector({ selected, onChange, characters, onCr
           character={character}
           isActive={selected === character.id}
           onClick={() => onChange(character.id)}
+          onDelete={character.isCustom && onDelete ? () => onDelete(character.id) : undefined}
         />
       ))}
       {onCreateNew && (

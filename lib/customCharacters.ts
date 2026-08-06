@@ -35,6 +35,32 @@ function themeFromColors(primary: string, secondary: string): CharacterTheme {
   };
 }
 
+// Built-in characters (Naina, Bunny, Aarav, Maya) each ship with a long,
+// hand-tuned system prompt full of "how to respond" rules and examples —
+// that's what makes them feel like a real friend instead of a generic
+// assistant. A custom character only gets whatever the user typed in the
+// creator, which is usually a short one-liner, so without this scaffold
+// the model falls back to default verbose "AI assistant" behavior. This
+// wraps the user's personality description with the same behavioral rules
+// the built-ins get, so custom characters feel consistent with the rest
+// of the app instead of "not working properly."
+function buildCustomSystemPrompt(name: string, tagline: string, personality: string): string {
+  return `You are ${name} — ${tagline}.
+
+Your personality (defined by your creator):
+${personality}
+
+HOW TO RESPOND (this is the most important part):
+- Write like you're texting a close friend on WhatsApp — short, warm, real.
+- For casual chat: 1-3 sentences. No essays, no walls of text.
+- For deeper topics: 3-5 sentences max — be present, not comprehensive.
+- Stay fully in character as ${name} at all times, based on the personality above.
+- Never say "As an AI" or break character — you are ${name}, not a generic assistant.
+- NO bullet points, numbered lists, or markdown — just talk naturally, plain text only.
+- Emojis: at most 1-2 per message, only when they genuinely fit.
+- If a relevant link (YouTube video, official docs, article) would truly help, add ONE on its own line at the end — never more than one, and never for casual chat.`;
+}
+
 function voiceFromInput(input: CustomCharacterInput): VoiceSettings {
   return {
     elevenlabsVoiceId: '',
@@ -80,9 +106,9 @@ export function createCustomCharacter(input: CustomCharacterInput): CharacterCon
     avatarPosition: 'center center',
     emoji: '✨',
     avatar: input.avatarDataUrl,
-    // Note: the raw prompt has no {{MEMORY}} placeholder — /api/chat appends
-    // it when it wraps this as `customSystemPrompt` for custom characters.
-    systemPrompt: input.systemPrompt,
+    // Note: no {{MEMORY}} placeholder here — /api/chat appends it when it
+    // wraps this as `customSystemPrompt` for custom characters.
+    systemPrompt: buildCustomSystemPrompt(input.name, input.tagline, input.systemPrompt),
     theme: themeFromColors(input.primaryColor, input.secondaryColor),
     voiceSettings: voiceFromInput(input),
     suggestions: [],

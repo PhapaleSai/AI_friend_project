@@ -87,8 +87,12 @@ export default function CharacterCreator({ onCreated, onClose }: CharacterCreato
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center px-3 pb-3 sm:px-6"
-      style={{ background: 'rgba(7,7,15,0.72)', backdropFilter: 'blur(8px)' }}
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center px-3 sm:px-6"
+      style={{
+        background: 'rgba(7,7,15,0.72)',
+        backdropFilter: 'blur(8px)',
+        paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom))',
+      }}
       onClick={onClose}
     >
       <div

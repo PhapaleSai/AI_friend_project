@@ -4,7 +4,7 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import Image from 'next/image';
 import type { Message, OrbState, CharacterId } from '@/lib/types';
 import type { CharacterConfig } from '@/lib/characters';
-import { getAllCharacters } from '@/lib/customCharacters';
+import { getAllCharacters, deleteCustomCharacter } from '@/lib/customCharacters';
 import {
   loadConversation,
   saveConversation,
@@ -398,6 +398,14 @@ export default function ChatInterface({ initialCharacter = 'naina', onBack, user
     handleCharacterChange(config.id);
   }, [handleCharacterChange]);
 
+  const handleDeleteCharacter = useCallback((id: string) => {
+    deleteCustomCharacter(id);
+    clearConversation(id);
+    const next = getAllCharacters();
+    setAllCharacters(next);
+    if (id === characterId) handleCharacterChange('naina');
+  }, [characterId, handleCharacterChange]);
+
   if (!hydrated || !character) return null;
 
   return (
@@ -427,16 +435,17 @@ export default function ChatInterface({ initialCharacter = 'naina', onBack, user
 
       {/* ─── Header ─────────────────────────────────────────────── */}
       <header
-        className="flex items-center justify-between px-3 py-2 flex-shrink-0 transition-all duration-500"
+        className="flex items-center justify-between gap-2 px-2 sm:px-3 py-2 flex-shrink-0 transition-all duration-500"
         style={{
           background: 'rgba(7,7,15,0.85)',
           backdropFilter: 'blur(24px)',
           borderBottom: `1px solid ${character.theme.primary}18`,
           boxShadow: `0 1px 0 ${character.theme.primary}10`,
+          paddingTop: 'max(0.5rem, env(safe-area-inset-top))',
         }}
       >
         {/* Left */}
-        <div className="flex items-center gap-2 min-w-0">
+        <div className="flex items-center gap-2 min-w-0 flex-1">
           {onBack && (
             <button
               onClick={onBack}
@@ -453,6 +462,7 @@ export default function ChatInterface({ initialCharacter = 'naina', onBack, user
             onChange={handleCharacterChange}
             characters={Object.values(allCharacters)}
             onCreateNew={() => setShowCreator(true)}
+            onDelete={handleDeleteCharacter}
           />
         </div>
 
