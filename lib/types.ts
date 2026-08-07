@@ -25,6 +25,8 @@ export interface Message {
   audioUrl?: string;
   sources?: ArticleSource[];
   emailDraft?: EmailDraft;
+  /** ISO timestamp. Optional — messages saved before this field existed won't have it. */
+  createdAt?: string;
 }
 
 export type OrbState = 'idle' | 'listening' | 'thinking' | 'speaking';

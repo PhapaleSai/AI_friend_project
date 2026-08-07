@@ -3,6 +3,7 @@
 import { useRef, useState } from 'react';
 import Image from 'next/image';
 import { createCustomCharacter, importCharacterCode, type CustomCharacterInput } from '@/lib/customCharacters';
+import { fileToResizedDataUrl } from '@/lib/imageUtils';
 import type { CharacterConfig } from '@/lib/characters';
 
 interface CharacterCreatorProps {
@@ -18,31 +19,6 @@ const COLOR_PRESETS: [string, string][] = [
   ['#ef4444', '#f97316'],
   ['#a855f7', '#6366f1'],
 ];
-
-function resizeImageToDataUrl(file: File, size = 200): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onerror = () => reject(new Error('Failed to read file'));
-    reader.onload = () => {
-      const img = document.createElement('img');
-      img.onerror = () => reject(new Error('Failed to load image'));
-      img.onload = () => {
-        const canvas = document.createElement('canvas');
-        canvas.width = size;
-        canvas.height = size;
-        const ctx = canvas.getContext('2d');
-        if (!ctx) { reject(new Error('Canvas unsupported')); return; }
-        const scale = Math.max(size / img.width, size / img.height);
-        const w = img.width * scale;
-        const h = img.height * scale;
-        ctx.drawImage(img, (size - w) / 2, (size - h) / 2, w, h);
-        resolve(canvas.toDataURL('image/jpeg', 0.85));
-      };
-      img.src = reader.result as string;
-    };
-    reader.readAsDataURL(file);
-  });
-}
 
 export default function CharacterCreator({ onCreated, onClose }: CharacterCreatorProps) {
   const [name, setName] = useState('');
@@ -68,7 +44,7 @@ export default function CharacterCreator({ onCreated, onClose }: CharacterCreato
   const handleFile = async (file: File | undefined) => {
     if (!file) return;
     try {
-      setAvatarDataUrl(await resizeImageToDataUrl(file));
+      setAvatarDataUrl(await fileToResizedDataUrl(file, { maxSize: 200, quality: 0.85, mode: 'cover' }));
     } catch {
       setError('Could not load that image — try another one.');
     }

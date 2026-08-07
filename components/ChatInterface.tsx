@@ -108,6 +108,7 @@ export default function ChatInterface({ initialCharacter = 'naina', onBack, user
   const [showSearch, setShowSearch] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [showMenu, setShowMenu] = useState(false);
+  const [showScrollDown, setShowScrollDown] = useState(false);
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const recordingHandleRef = useRef<RecordingHandle | null>(null);
@@ -178,9 +179,13 @@ export default function ChatInterface({ initialCharacter = 'naina', onBack, user
     const userMsg: Message = {
       id: genId(), role: 'user', content: text.trim(),
       isVoiceNote: voiceMeta?.isVoiceNote, audioUrl: voiceMeta?.audioUrl,
+      createdAt: new Date().toISOString(),
     };
     const assistantId = genId();
-    const assistantMsg: Message = { id: assistantId, role: 'assistant', content: '', isStreaming: true };
+    const assistantMsg: Message = {
+      id: assistantId, role: 'assistant', content: '', isStreaming: true,
+      createdAt: new Date().toISOString(),
+    };
     const updatedMessages = [...messages, userMsg, assistantMsg];
 
     setMessagesByChar((prev) => ({ ...prev, [characterId]: updatedMessages }));
@@ -387,6 +392,18 @@ export default function ChatInterface({ initialCharacter = 'naina', onBack, user
     const md = exportToMarkdown(character, userName, messages);
     downloadText(`${character.name.toLowerCase()}-chat.md`, md);
   }, [character, userName, messages]);
+
+  const handleScroll = useCallback(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
+    setShowScrollDown(distanceFromBottom > 240);
+  }, []);
+
+  const scrollToBottom = useCallback(() => {
+    const el = scrollRef.current;
+    if (el) el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });
+  }, []);
 
   const handleShareCharacter = useCallback(async () => {
     if (!character?.isCustom) return;
@@ -758,8 +775,13 @@ export default function ChatInterface({ initialCharacter = 'naina', onBack, user
           </div>
         ) : (
           /* ── Chat view ── */
-          <div className="flex-1 overflow-hidden flex flex-col min-h-0">
-            <div ref={scrollRef} className="flex-1 overflow-y-auto pt-3 pb-2" style={{ scrollBehavior: 'smooth' }}>
+          <div className="relative flex-1 overflow-hidden flex flex-col min-h-0">
+            <div
+              ref={scrollRef}
+              onScroll={handleScroll}
+              className="flex-1 overflow-y-auto pt-3 pb-2"
+              style={{ scrollBehavior: 'smooth' }}
+            >
               {trimmedQuery && visibleMessages.length === 0 && (
                 <p className="text-center text-slate-600 text-xs mt-8 px-6">
                   No messages match &ldquo;{trimmedQuery}&rdquo;
@@ -788,6 +810,27 @@ export default function ChatInterface({ initialCharacter = 'naina', onBack, user
                 <TypingIndicator color={character.theme.primary} />
               )}
             </div>
+
+            {/* Jump to latest */}
+            {showScrollDown && !trimmedQuery && (
+              <button
+                onClick={scrollToBottom}
+                className="absolute right-4 bottom-4 z-10 w-9 h-9 rounded-full flex items-center justify-center
+                           transition-all duration-200 active:scale-90 focus:outline-none bounce-in"
+                style={{
+                  background: 'rgba(22,22,34,0.92)',
+                  border: `1px solid ${character.theme.primary}45`,
+                  color: character.theme.primary,
+                  boxShadow: '0 6px 20px rgba(0,0,0,0.5)',
+                  backdropFilter: 'blur(12px)',
+                }}
+                title="Jump to latest"
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M20 12l-1.41-1.41L13 16.17V4h-2v12.17l-5.58-5.59L4 12l8 8 8-8z"/>
+                </svg>
+              </button>
+            )}
 
             {/* Orb floating pill during active states */}
             {(orbState !== 'idle') && (
