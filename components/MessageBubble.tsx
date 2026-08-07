@@ -12,6 +12,35 @@ interface MessageBubbleProps {
   showAvatar?: boolean;
   isSpeaking?: boolean;
   onToggleSpeak?: () => void;
+  /** Search term to visually highlight within the message text. */
+  highlight?: string;
+}
+
+/** Wraps every case-insensitive occurrence of `query` in a <mark>. */
+function highlightText(text: string, query?: string): React.ReactNode {
+  if (!query) return text;
+  const lower = text.toLowerCase();
+  const q = query.toLowerCase();
+  const parts: React.ReactNode[] = [];
+  let last = 0;
+  let idx = lower.indexOf(q);
+  let key = 0;
+  while (idx !== -1) {
+    if (idx > last) parts.push(text.slice(last, idx));
+    parts.push(
+      <mark
+        key={key++}
+        style={{ background: 'rgba(250,204,21,0.35)', color: 'inherit', borderRadius: 3, padding: '0 1px' }}
+      >
+        {text.slice(idx, idx + q.length)}
+      </mark>
+    );
+    last = idx + q.length;
+    idx = lower.indexOf(q, last);
+  }
+  if (parts.length === 0) return text;
+  if (last < text.length) parts.push(text.slice(last));
+  return parts;
 }
 
 // Detect a bare URL on its own line or inline
@@ -135,7 +164,7 @@ function parseSegments(text: string): Array<{ type: 'text' | 'url'; value: strin
   return segments;
 }
 
-function renderPlainText(text: string) {
+function renderPlainText(text: string, highlight?: string) {
   // Trim blank lines that were just holding a URL
   const cleaned = text.replace(/\n{3,}/g, '\n\n').trim();
   if (!cleaned) return null;
@@ -143,13 +172,13 @@ function renderPlainText(text: string) {
   return paras.map((para, i) => (
     <p key={i} style={{ margin: i > 0 ? '0.4em 0 0' : 0 }}>
       {para.split('\n').map((line, j) => (
-        <span key={j}>{j > 0 && <br />}{line}</span>
+        <span key={j}>{j > 0 && <br />}{highlightText(line, highlight)}</span>
       ))}
     </p>
   ));
 }
 
-function MessageContent({ text, isStreaming }: { text: string; isStreaming?: boolean }) {
+function MessageContent({ text, isStreaming, highlight }: { text: string; isStreaming?: boolean; highlight?: string }) {
   if (!text) {
     return isStreaming ? <span className="typing-dots" /> : <span>…</span>;
   }
@@ -177,7 +206,7 @@ function MessageContent({ text, isStreaming }: { text: string; isStreaming?: boo
 
   return (
     <span className={isStreaming ? 'cursor-blink' : ''}>
-      {renderPlainText(combinedText)}
+      {renderPlainText(combinedText, highlight)}
       {linkNodes.length > 0 && (
         <span className="flex flex-col gap-1 mt-1">
           {linkNodes}
@@ -309,7 +338,7 @@ function EmailDraftCard({ draft, color }: { draft: NonNullable<Message['emailDra
   );
 }
 
-export default function MessageBubble({ message, character, showAvatar = true, isSpeaking = false, onToggleSpeak }: MessageBubbleProps) {
+export default function MessageBubble({ message, character, showAvatar = true, isSpeaking = false, onToggleSpeak, highlight }: MessageBubbleProps) {
   const isUser = message.role === 'user';
   const { theme } = character;
 
@@ -326,7 +355,7 @@ export default function MessageBubble({ message, character, showAvatar = true, i
           {message.isVoiceNote && message.audioUrl && (
             <VoiceNoteRow audioUrl={message.audioUrl} color={theme.secondary} />
           )}
-          {message.content}
+          {highlightText(message.content, highlight)}
         </div>
       </div>
     );
@@ -361,7 +390,7 @@ export default function MessageBubble({ message, character, showAvatar = true, i
             backdropFilter: 'blur(16px)',
           }}
         >
-          <MessageContent text={message.content} isStreaming={message.isStreaming} />
+          <MessageContent text={message.content} isStreaming={message.isStreaming} highlight={highlight} />
           {message.sources && message.sources.length > 0 && (
             <div className="flex flex-col gap-1 mt-1">
               {message.sources.map((s) => (

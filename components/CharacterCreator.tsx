@@ -2,7 +2,7 @@
 
 import { useRef, useState } from 'react';
 import Image from 'next/image';
-import { createCustomCharacter, type CustomCharacterInput } from '@/lib/customCharacters';
+import { createCustomCharacter, importCharacterCode, type CustomCharacterInput } from '@/lib/customCharacters';
 import type { CharacterConfig } from '@/lib/characters';
 
 interface CharacterCreatorProps {
@@ -53,6 +53,17 @@ export default function CharacterCreator({ onCreated, onClose }: CharacterCreato
   const [gender, setGender] = useState<'female' | 'male'>('female');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [error, setError] = useState('');
+  const [tab, setTab] = useState<'create' | 'import'>('create');
+  const [importCode, setImportCode] = useState('');
+
+  const handleImport = () => {
+    const config = importCharacterCode(importCode);
+    if (!config) {
+      setError('That code isn\'t valid. Make sure you copied the whole thing.');
+      return;
+    }
+    onCreated(config);
+  };
 
   const handleFile = async (file: File | undefined) => {
     if (!file) return;
@@ -104,13 +115,57 @@ export default function CharacterCreator({ onCreated, onClose }: CharacterCreato
         }}
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between mb-5">
-          <h3 className="text-lg font-bold text-white">Create your AI friend</h3>
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-bold text-white">
+            {tab === 'create' ? 'Create your AI friend' : 'Import a friend'}
+          </h3>
           <button onClick={onClose} className="text-slate-500 hover:text-white transition-colors focus:outline-none">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
           </button>
         </div>
 
+        {/* Tabs */}
+        <div className="flex gap-1 mb-5 p-1 rounded-xl" style={{ background: 'rgba(255,255,255,0.04)' }}>
+          {(['create', 'import'] as const).map((t) => (
+            <button
+              key={t}
+              onClick={() => { setTab(t); setError(''); }}
+              className="flex-1 py-2 rounded-lg text-xs font-semibold capitalize transition-all duration-150 focus:outline-none"
+              style={{
+                background: tab === t ? 'rgba(255,255,255,0.09)' : 'transparent',
+                color: tab === t ? '#fff' : '#64748b',
+              }}
+            >
+              {t === 'create' ? 'Create new' : 'Import code'}
+            </button>
+          ))}
+        </div>
+
+        {tab === 'import' ? (
+          <>
+            <p className="text-xs text-slate-400 mb-3 leading-relaxed">
+              Paste a share code someone sent you. Their character — personality, voice and look — gets added to your list.
+            </p>
+            <textarea
+              value={importCode}
+              onChange={(e) => { setImportCode(e.target.value); setError(''); }}
+              placeholder="FRIENDAI1:..."
+              rows={5}
+              className="w-full mb-4 px-3 py-2.5 rounded-xl text-xs text-white placeholder-slate-600 focus:outline-none resize-none font-mono break-all"
+              style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)' }}
+            />
+            {error && <p className="text-xs text-red-400 mb-3">{error}</p>}
+            <button
+              onClick={handleImport}
+              disabled={!importCode.trim()}
+              className="w-full py-3 rounded-xl text-sm font-bold text-white transition-all duration-200 active:scale-95 focus:outline-none disabled:opacity-40"
+              style={{ background: `linear-gradient(135deg, ${COLOR_PRESETS[0][0]}, ${COLOR_PRESETS[0][1]})` }}
+            >
+              Import &amp; start chatting
+            </button>
+          </>
+        ) : (
+        <>
         {/* Avatar upload */}
         <div className="flex flex-col items-center mb-5">
           <button
@@ -209,6 +264,8 @@ export default function CharacterCreator({ onCreated, onClose }: CharacterCreato
         >
           Create &amp; start chatting
         </button>
+        </>
+        )}
       </div>
     </div>
   );

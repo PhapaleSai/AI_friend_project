@@ -4,7 +4,7 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import Image from 'next/image';
 import type { Message, OrbState, CharacterId } from '@/lib/types';
 import type { CharacterConfig } from '@/lib/characters';
-import { getAllCharacters, deleteCustomCharacter } from '@/lib/customCharacters';
+import { getAllCharacters, deleteCustomCharacter, exportCharacterCode } from '@/lib/customCharacters';
 import {
   loadConversation,
   saveConversation,
@@ -105,6 +105,9 @@ export default function ChatInterface({ initialCharacter = 'naina', onBack, user
   const [showProfile, setShowProfile] = useState(false);
   const [showCreator, setShowCreator] = useState(false);
   const [profile, setProfile] = useState<UserProfile>({ nickname: '', birthday: '', tone: 'default' });
+  const [showSearch, setShowSearch] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [showMenu, setShowMenu] = useState(false);
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const recordingHandleRef = useRef<RecordingHandle | null>(null);
@@ -114,6 +117,10 @@ export default function ChatInterface({ initialCharacter = 'naina', onBack, user
   const messages = messagesByChar[characterId] ?? [];
   const memoryFacts = memoryByChar[characterId] ?? [];
   const hasMessages = messages.length > 0;
+  const trimmedQuery = searchQuery.trim();
+  const visibleMessages = trimmedQuery
+    ? messages.filter((m) => m.content.toLowerCase().includes(trimmedQuery.toLowerCase()))
+    : messages;
   const voiceSupported = typeof window !== 'undefined' && isMicSupported();
   const ttsSupported = typeof window !== 'undefined' && isSpeechSynthesisSupported();
 
@@ -143,6 +150,12 @@ export default function ChatInterface({ initialCharacter = 'naina', onBack, user
     }
   }, [messages, isLoading]);
 
+  // Jump back to the top when filtering, so results read from the beginning
+  // instead of leaving the view pinned to the bottom of the thread.
+  useEffect(() => {
+    if (trimmedQuery && scrollRef.current) scrollRef.current.scrollTop = 0;
+  }, [trimmedQuery]);
+
   const handleCharacterChange = useCallback((id: CharacterId) => {
     stopSpeaking();
     recordingHandleRef.current?.cancel();
@@ -153,6 +166,8 @@ export default function ChatInterface({ initialCharacter = 'naina', onBack, user
     setSpeakingMessageId(null);
     setCharacterId(id);
     setInputText('');
+    setShowSearch(false);
+    setSearchQuery('');
   }, []);
 
   const sendMessage = useCallback(async (text: string, voiceMeta?: { isVoiceNote?: boolean; audioUrl?: string }) => {
@@ -373,6 +388,22 @@ export default function ChatInterface({ initialCharacter = 'naina', onBack, user
     downloadText(`${character.name.toLowerCase()}-chat.md`, md);
   }, [character, userName, messages]);
 
+  const handleShareCharacter = useCallback(async () => {
+    if (!character?.isCustom) return;
+    const code = await exportCharacterCode(character);
+    try {
+      await navigator.clipboard.writeText(code);
+      setStatusText('Share code copied!');
+    } catch {
+      // Clipboard blocked (non-HTTPS or denied) — fall back to a prompt the
+      // user can copy from manually.
+      window.prompt('Copy this share code:', code);
+      setStatusText('');
+      return;
+    }
+    setTimeout(() => setStatusText((prev) => (prev === 'Share code copied!' ? '' : prev)), 2500);
+  }, [character]);
+
   const handleMoodSelect = useCallback((value: string) => {
     setMood(value);
     sessionStorage.setItem(MOOD_SESSION_KEY, value);
@@ -519,28 +550,109 @@ export default function ChatInterface({ initialCharacter = 'naina', onBack, user
             </button>
           )}
 
+          {/* Search toggle */}
           {hasMessages && (
             <button
-              onClick={handleExport}
-              className="px-2.5 py-1.5 rounded-xl text-xs text-slate-600 hover:text-slate-400
-                         border border-white/5 hover:border-white/10 transition-all duration-200 focus:outline-none"
-              title="Export chat as Markdown"
+              onClick={() => {
+                setShowSearch((v) => {
+                  if (v) setSearchQuery('');
+                  return !v;
+                });
+              }}
+              className="w-8 h-8 rounded-xl flex items-center justify-center transition-all duration-200 focus:outline-none"
+              style={{
+                background: showSearch ? `${character.theme.primary}18` : 'transparent',
+                color: showSearch ? character.theme.primary : '#64748b',
+              }}
+              title="Search this chat"
             >
-              Export
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M15.5 14h-.79l-.28-.27A6.47 6.47 0 0016 9.5 6.5 6.5 0 109.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>
+              </svg>
             </button>
           )}
 
-          {hasMessages && (
-            <button
-              onClick={handleClear}
-              className="px-2.5 py-1.5 rounded-xl text-xs text-slate-600 hover:text-slate-400
-                         border border-white/5 hover:border-white/10 transition-all duration-200 focus:outline-none"
-            >
-              Clear
-            </button>
+          {/* Overflow menu */}
+          {(hasMessages || character.isCustom) && (
+            <div className="relative">
+              <button
+                onClick={() => setShowMenu((v) => !v)}
+                className="w-8 h-8 rounded-xl flex items-center justify-center text-slate-500
+                           hover:text-white hover:bg-white/8 transition-all duration-200 focus:outline-none"
+                title="More"
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/>
+                </svg>
+              </button>
+
+              {showMenu && (
+                <>
+                  <div className="fixed inset-0 z-40" onClick={() => setShowMenu(false)} />
+                  <div
+                    className="absolute right-0 top-10 z-50 min-w-[170px] rounded-xl py-1 overflow-hidden"
+                    style={{
+                      background: 'rgba(22,22,34,0.98)',
+                      border: '1px solid rgba(255,255,255,0.1)',
+                      boxShadow: '0 12px 32px rgba(0,0,0,0.6)',
+                    }}
+                  >
+                    {character.isCustom && (
+                      <button
+                        onClick={() => { setShowMenu(false); handleShareCharacter(); }}
+                        className="w-full text-left px-3.5 py-2.5 text-xs text-slate-300 hover:bg-white/8 transition-colors focus:outline-none"
+                      >
+                        Share this character
+                      </button>
+                    )}
+                    {hasMessages && (
+                      <button
+                        onClick={() => { setShowMenu(false); handleExport(); }}
+                        className="w-full text-left px-3.5 py-2.5 text-xs text-slate-300 hover:bg-white/8 transition-colors focus:outline-none"
+                      >
+                        Export chat (.md)
+                      </button>
+                    )}
+                    {hasMessages && (
+                      <button
+                        onClick={() => { setShowMenu(false); handleClear(); }}
+                        className="w-full text-left px-3.5 py-2.5 text-xs text-red-400 hover:bg-white/8 transition-colors focus:outline-none"
+                      >
+                        Clear chat
+                      </button>
+                    )}
+                  </div>
+                </>
+              )}
+            </div>
           )}
         </div>
       </header>
+
+      {/* ─── Search bar ──────────────────────────────────────────── */}
+      {showSearch && hasMessages && (
+        <div
+          className="flex items-center gap-2 px-3 py-2 flex-shrink-0"
+          style={{ background: 'rgba(7,7,15,0.7)', borderBottom: '1px solid rgba(255,255,255,0.06)' }}
+        >
+          <input
+            autoFocus
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search this conversation..."
+            className="flex-1 min-w-0 bg-transparent text-sm text-slate-100 placeholder-slate-600 focus:outline-none py-1"
+          />
+          <span className="text-[11px] text-slate-600 flex-shrink-0">
+            {trimmedQuery ? `${visibleMessages.length} found` : ''}
+          </span>
+          <button
+            onClick={() => { setShowSearch(false); setSearchQuery(''); }}
+            className="w-6 h-6 rounded-lg flex items-center justify-center text-slate-500 hover:text-white transition-colors focus:outline-none flex-shrink-0"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+          </button>
+        </div>
+      )}
 
       {/* ─── Body ────────────────────────────────────────────────── */}
       <div className="flex-1 overflow-hidden flex flex-col min-h-0">
@@ -648,16 +760,24 @@ export default function ChatInterface({ initialCharacter = 'naina', onBack, user
           /* ── Chat view ── */
           <div className="flex-1 overflow-hidden flex flex-col min-h-0">
             <div ref={scrollRef} className="flex-1 overflow-y-auto pt-3 pb-2" style={{ scrollBehavior: 'smooth' }}>
-              {messages.map((msg, i) => {
-                const prevMsg = messages[i - 1];
+              {trimmedQuery && visibleMessages.length === 0 && (
+                <p className="text-center text-slate-600 text-xs mt-8 px-6">
+                  No messages match &ldquo;{trimmedQuery}&rdquo;
+                </p>
+              )}
+              {visibleMessages.map((msg, i) => {
+                const prevMsg = visibleMessages[i - 1];
+                // While searching, every result shows its avatar since
+                // neighbours aren't necessarily consecutive in the real thread.
                 const showAvatar = msg.role === 'assistant' &&
-                  (!prevMsg || prevMsg.role === 'user');
+                  (!!trimmedQuery || !prevMsg || prevMsg.role === 'user');
                 return (
                   <MessageBubble
                     key={msg.id}
                     message={msg}
                     character={character}
                     showAvatar={showAvatar}
+                    highlight={trimmedQuery}
                     isSpeaking={speakingMessageId === msg.id}
                     onToggleSpeak={msg.role === 'assistant' && ttsSupported ? () => handleToggleSpeak(msg) : undefined}
                   />

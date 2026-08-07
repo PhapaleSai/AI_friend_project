@@ -113,6 +113,7 @@ export function createCustomCharacter(input: CustomCharacterInput): CharacterCon
     voiceSettings: voiceFromInput(input),
     suggestions: [],
     isCustom: true,
+    rawPersonality: input.systemPrompt,
   };
   const list = loadCustomCharacters();
   list.push(config);
@@ -122,6 +123,131 @@ export function createCustomCharacter(input: CustomCharacterInput): CharacterCon
 
 export function deleteCustomCharacter(id: string): void {
   persist(loadCustomCharacters().filter((c) => c.id !== id));
+}
+
+/* ─── Sharing ──────────────────────────────────────────────────────────
+   A share code is just base64(JSON) of the same CustomCharacterInput used
+   to create a character locally. Importing runs it back through
+   createCustomCharacter(), so a shared character is rebuilt by exactly
+   the same code path as a locally-made one — nothing from the payload is
+   trusted as-is. See validateSharedInput() for what gets checked.
+─────────────────────────────────────────────────────────────────────── */
+
+const SHARE_PREFIX = 'FRIENDAI1:';
+
+function toBase64(str: string): string {
+  const bytes = new TextEncoder().encode(str);
+  let binary = '';
+  const CHUNK = 0x8000; // avoid blowing the call stack on large avatars
+  for (let i = 0; i < bytes.length; i += CHUNK) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + CHUNK));
+  }
+  return btoa(binary);
+}
+
+function fromBase64(b64: string): string {
+  const binary = atob(b64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  return new TextDecoder().decode(bytes);
+}
+
+/** Recovers the raw personality text from a wrapped prompt (pre-rawPersonality characters). */
+function extractPersonality(systemPrompt: string): string {
+  const match = systemPrompt.match(/Your personality \(defined by your creator\):\n([\s\S]*?)\n\nHOW TO RESPOND/);
+  return match ? match[1].trim() : systemPrompt;
+}
+
+/**
+ * Re-encodes the avatar smaller for sharing. The stored 200px avatar makes
+ * a ~27,000-character share code, which is impractical to paste into a chat;
+ * 96px at moderate quality brings that down to a few thousand characters
+ * while still looking fine at the sizes avatars actually render (32–128px).
+ */
+function shrinkAvatarForSharing(dataUrl: string): Promise<string> {
+  return new Promise((resolve) => {
+    const img = document.createElement('img');
+    img.onerror = () => resolve(dataUrl); // fall back to the original
+    img.onload = () => {
+      try {
+        const size = 96;
+        const canvas = document.createElement('canvas');
+        canvas.width = size;
+        canvas.height = size;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) { resolve(dataUrl); return; }
+        ctx.drawImage(img, 0, 0, size, size);
+        resolve(canvas.toDataURL('image/jpeg', 0.65));
+      } catch {
+        resolve(dataUrl);
+      }
+    };
+    img.src = dataUrl;
+  });
+}
+
+export async function exportCharacterCode(config: CharacterConfig): Promise<string> {
+  const input: CustomCharacterInput = {
+    name: config.name,
+    tagline: config.subtitle,
+    systemPrompt: config.rawPersonality ?? extractPersonality(config.systemPrompt),
+    avatarDataUrl: await shrinkAvatarForSharing(config.avatar),
+    primaryColor: config.theme.primary,
+    secondaryColor: config.theme.secondary,
+    gender: config.voiceSettings.gender,
+    rate: config.voiceSettings.rate,
+    pitch: config.voiceSettings.pitch,
+  };
+  return SHARE_PREFIX + toBase64(JSON.stringify(input));
+}
+
+const HEX_COLOR = /^#[0-9a-fA-F]{6}$/;
+// Only inline image data URLs — never a remote URL (which would leak the
+// viewer's IP to whoever made the code) and never a script-bearing scheme.
+const DATA_IMAGE = /^data:image\/(png|jpe?g|webp);base64,[A-Za-z0-9+/=]+$/;
+
+function validateSharedInput(raw: unknown): CustomCharacterInput | null {
+  if (!raw || typeof raw !== 'object') return null;
+  const o = raw as Record<string, unknown>;
+
+  const name = typeof o.name === 'string' ? o.name.trim().slice(0, 20) : '';
+  const tagline = typeof o.tagline === 'string' ? o.tagline.trim().slice(0, 40) : '';
+  const systemPrompt = typeof o.systemPrompt === 'string' ? o.systemPrompt.trim().slice(0, 4000) : '';
+  const avatarDataUrl = typeof o.avatarDataUrl === 'string' ? o.avatarDataUrl : '';
+
+  if (!name || !systemPrompt) return null;
+  if (!DATA_IMAGE.test(avatarDataUrl)) return null;
+
+  const primaryColor = typeof o.primaryColor === 'string' && HEX_COLOR.test(o.primaryColor) ? o.primaryColor : '#8b5cf6';
+  const secondaryColor = typeof o.secondaryColor === 'string' && HEX_COLOR.test(o.secondaryColor) ? o.secondaryColor : '#ec4899';
+  const gender = o.gender === 'male' ? 'male' : 'female';
+  const clamp = (v: unknown, min: number, max: number, fallback: number) =>
+    typeof v === 'number' && Number.isFinite(v) ? Math.min(max, Math.max(min, v)) : fallback;
+
+  return {
+    name,
+    tagline: tagline || 'Your custom AI friend',
+    systemPrompt,
+    avatarDataUrl,
+    primaryColor,
+    secondaryColor,
+    gender,
+    rate: clamp(o.rate, 0.5, 2, 1),
+    pitch: clamp(o.pitch, 0, 2, gender === 'female' ? 1.2 : 0.85),
+  };
+}
+
+export function importCharacterCode(code: string): CharacterConfig | null {
+  try {
+    const trimmed = code.trim();
+    if (!trimmed.startsWith(SHARE_PREFIX)) return null;
+    const parsed = JSON.parse(fromBase64(trimmed.slice(SHARE_PREFIX.length)));
+    const input = validateSharedInput(parsed);
+    if (!input) return null;
+    return createCustomCharacter(input);
+  } catch {
+    return null;
+  }
 }
 
 export function getAllCharacters(): Record<string, CharacterConfig> {

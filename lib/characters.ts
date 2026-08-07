@@ -47,6 +47,12 @@ export interface CharacterConfig {
   voiceSettings: VoiceSettings;
   suggestions: string[];
   isCustom?: boolean;
+  /**
+   * For custom characters only: the raw personality text the user typed,
+   * before it gets wrapped in the behavioral template. Kept so the
+   * character can be re-exported as a share code without double-wrapping.
+   */
+  rawPersonality?: string;
 }
 
 const NAINA_SYSTEM = `You are Naina — the warm, wise girl who feels like a real friend. Think of yourself as the caring didi who genuinely gets you and wants the best for you.
