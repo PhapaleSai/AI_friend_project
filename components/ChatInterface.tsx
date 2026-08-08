@@ -104,7 +104,7 @@ export default function ChatInterface({ initialCharacter = 'naina', onBack, user
   const [mood, setMood] = useState('');
   const [showProfile, setShowProfile] = useState(false);
   const [showCreator, setShowCreator] = useState(false);
-  const [profile, setProfile] = useState<UserProfile>({ nickname: '', birthday: '', tone: 'default' });
+  const [profile, setProfile] = useState<UserProfile>({ nickname: '', birthday: '', tone: 'default', betterVoice: false });
   const [showSearch, setShowSearch] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [showMenu, setShowMenu] = useState(false);
@@ -278,7 +278,7 @@ export default function ChatInterface({ initialCharacter = 'naina', onBack, user
         speak(displayText, character.voiceSettings, {
           onEnd: () => { setOrbState('idle'); setStatusText(''); setSpeakingMessageId(null); },
           onError: () => { setOrbState('idle'); setStatusText(''); setSpeakingMessageId(null); },
-        });
+        }, profile.betterVoice);
       } else {
         setOrbState('idle');
       }
@@ -374,8 +374,8 @@ export default function ChatInterface({ initialCharacter = 'naina', onBack, user
     speak(message.content, character.voiceSettings, {
       onEnd: () => setSpeakingMessageId(null),
       onError: () => setSpeakingMessageId(null),
-    });
-  }, [character, speakingMessageId]);
+    }, profile.betterVoice);
+  }, [character, speakingMessageId, profile.betterVoice]);
 
   const handleClear = useCallback(() => {
     stopSpeaking();

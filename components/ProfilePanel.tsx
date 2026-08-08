@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import type { UserProfile } from '@/lib/profile';
 import { TONE_LABELS } from '@/lib/profile';
+import { loadKokoro, isKokoroReady, isKokoroSupported } from '@/lib/kokoro';
 
 interface ProfilePanelProps {
   profile: UserProfile;
@@ -20,10 +21,31 @@ export default function ProfilePanel({
   const [nickname, setNickname] = useState(profile.nickname);
   const [birthday, setBirthday] = useState(profile.birthday);
   const [tone, setTone] = useState(profile.tone);
+  const [betterVoice, setBetterVoice] = useState(profile.betterVoice);
+  const [voiceProgress, setVoiceProgress] = useState<number | null>(null);
+  const [voiceError, setVoiceError] = useState('');
 
   const handleSave = () => {
-    onSave({ nickname: nickname.trim(), birthday, tone });
+    onSave({ nickname: nickname.trim(), birthday, tone, betterVoice });
     onClose();
+  };
+
+  const toggleBetterVoice = async () => {
+    if (betterVoice) { setBetterVoice(false); return; }
+    setVoiceError('');
+    setBetterVoice(true);
+    // Download now so the first spoken reply isn't stuck waiting on ~86MB.
+    if (!isKokoroReady()) {
+      setVoiceProgress(0);
+      try {
+        await loadKokoro((pct) => setVoiceProgress(pct));
+      } catch {
+        setVoiceError('Download failed — still using the standard voice.');
+        setBetterVoice(false);
+      } finally {
+        setVoiceProgress(null);
+      }
+    }
   };
 
   return (
@@ -87,6 +109,49 @@ export default function ProfilePanel({
             </button>
           ))}
         </div>
+
+        {isKokoroSupported() && (
+          <>
+            <label className="block text-xs font-semibold text-slate-400 mb-1.5">Voice quality</label>
+            <button
+              onClick={toggleBetterVoice}
+              disabled={voiceProgress !== null}
+              className="w-full mb-1.5 px-3 py-3 rounded-xl flex items-center gap-3 text-left transition-all duration-150 focus:outline-none"
+              style={{
+                background: betterVoice ? `${accentColor}18` : 'rgba(255,255,255,0.05)',
+                border: `1px solid ${betterVoice ? accentColor + '55' : 'rgba(255,255,255,0.08)'}`,
+              }}
+            >
+              <div className="flex-1 min-w-0">
+                <p className="text-[13px] font-semibold text-white leading-tight">Better voice</p>
+                <p className="text-[11px] text-slate-400 leading-snug mt-0.5">
+                  {voiceProgress !== null
+                    ? `Downloading voice… ${voiceProgress}%`
+                    : betterVoice
+                    ? 'Natural on-device voice'
+                    : 'One-time ~86MB download, then works offline'}
+                </p>
+              </div>
+              {/* Switch */}
+              <span
+                className="flex-shrink-0 w-10 h-6 rounded-full relative transition-colors duration-200"
+                style={{ background: betterVoice ? accentColor : 'rgba(255,255,255,0.15)' }}
+              >
+                <span
+                  className="absolute top-0.5 w-5 h-5 rounded-full bg-white transition-all duration-200"
+                  style={{ left: betterVoice ? 18 : 2 }}
+                />
+              </span>
+            </button>
+            {voiceProgress !== null && (
+              <div className="w-full h-1 rounded-full mb-4 overflow-hidden" style={{ background: 'rgba(255,255,255,0.08)' }}>
+                <div className="h-full rounded-full transition-all duration-200" style={{ width: `${voiceProgress}%`, background: accentColor }} />
+              </div>
+            )}
+            {voiceError && <p className="text-[11px] text-amber-400 mb-4">{voiceError}</p>}
+            {voiceProgress === null && !voiceError && <div className="mb-4" />}
+          </>
+        )}
 
         <label className="block text-xs font-semibold text-slate-400 mb-1.5">
           What {characterName} remembers about you

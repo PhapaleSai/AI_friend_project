@@ -6,9 +6,11 @@ export interface UserProfile {
   nickname: string;
   birthday: string; // YYYY-MM-DD, empty if unset
   tone: 'default' | 'gentle' | 'blunt' | 'hype';
+  /** Opt in to the higher-quality on-device Kokoro voice (one-time ~86MB download). */
+  betterVoice: boolean;
 }
 
-const DEFAULT_PROFILE: UserProfile = { nickname: '', birthday: '', tone: 'default' };
+const DEFAULT_PROFILE: UserProfile = { nickname: '', birthday: '', tone: 'default', betterVoice: false };
 
 export function loadProfile(): UserProfile {
   if (typeof window === 'undefined') return DEFAULT_PROFILE;

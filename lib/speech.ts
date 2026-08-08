@@ -2,6 +2,7 @@
 
 import type { VoiceSettings } from './characters';
 import { stripMarkdown } from './textFormat';
+import { speakWithKokoro, stopKokoro } from './kokoro';
 
 type SpeechCallbacks = {
   onStart?: () => void;
@@ -124,8 +125,35 @@ function getVoice(settings: VoiceSettings, onReady: (v: SpeechSynthesisVoice | n
   }
 }
 
+/**
+ * Speaks text. When `useKokoro` is set the higher-quality on-device model is
+ * tried first, falling back to browser speech synthesis if it isn't ready,
+ * isn't supported, or errors — so the user always hears something.
+ */
 export function speak(
   text: string,
+  voiceSettings: VoiceSettings,
+  callbacks?: SpeechCallbacks,
+  useKokoro = false
+): void {
+  const cleanText = stripEmojisAndClean(text);
+  if (!cleanText) { callbacks?.onEnd?.(); return; }
+
+  window.speechSynthesis?.cancel();
+  stopKokoro();
+
+  if (useKokoro) {
+    speakWithKokoro(cleanText, voiceSettings, callbacks).then((ok) => {
+      if (!ok) speakWithBrowser(cleanText, voiceSettings, callbacks);
+    });
+    return;
+  }
+
+  speakWithBrowser(cleanText, voiceSettings, callbacks);
+}
+
+function speakWithBrowser(
+  cleanText: string,
   voiceSettings: VoiceSettings,
   callbacks?: SpeechCallbacks
 ): void {
@@ -133,11 +161,6 @@ export function speak(
     callbacks?.onError?.('Speech synthesis not supported');
     return;
   }
-
-  window.speechSynthesis.cancel();
-
-  const cleanText = stripEmojisAndClean(text);
-  if (!cleanText) { callbacks?.onEnd?.(); return; }
 
   getVoice(voiceSettings, (voice) => {
     const utterance = new SpeechSynthesisUtterance(cleanText);
@@ -159,6 +182,7 @@ export function stopSpeaking(): void {
   if (isSpeechSynthesisSupported()) {
     window.speechSynthesis.cancel();
   }
+  stopKokoro();
 }
 
 export interface RecordingHandle {
