@@ -93,7 +93,7 @@ export default function InputBar({
             onPointerCancel={endHold}
             disabled={isDisabled && !isRecording}
             title="Hold to record a voice note"
-            className="flex-shrink-0 w-9 h-9 rounded-xl flex items-center justify-center select-none touch-none
+            className="flex-shrink-0 w-11 h-11 sm:w-9 sm:h-9 rounded-xl flex items-center justify-center select-none touch-none
                        transition-all duration-200 focus:outline-none active:scale-90"
             style={{
               background: isRecording ? accentColor + '30' : 'rgba(255,255,255,0.04)',
@@ -128,7 +128,7 @@ export default function InputBar({
                 />
               ))}
             </div>
-            <span className="text-xs font-medium animate-pulse truncate" style={{ color: accentColor }}>
+            <span className="text-[13px] sm:text-xs font-medium animate-pulse truncate" style={{ color: accentColor }}>
               Recording... release to send
             </span>
           </div>
@@ -141,7 +141,7 @@ export default function InputBar({
             placeholder="Message..."
             disabled={isDisabled}
             rows={1}
-            className="flex-1 bg-transparent resize-none text-[14px] text-slate-100 placeholder-slate-600
+            className="flex-1 bg-transparent resize-none text-[16px] text-slate-100 placeholder-slate-600
                        focus:outline-none leading-relaxed py-2 px-1"
             style={{ maxHeight: '120px', minHeight: '40px', opacity: isDisabled ? 0.5 : 1 }}
           />
@@ -151,7 +151,7 @@ export default function InputBar({
         <button
           onClick={onSend}
           disabled={!canSend}
-          className="flex-shrink-0 w-9 h-9 rounded-xl flex items-center justify-center
+          className="flex-shrink-0 w-11 h-11 sm:w-9 sm:h-9 rounded-xl flex items-center justify-center
                      transition-all duration-200 focus:outline-none active:scale-90"
           style={{
             background: canSend

@@ -40,7 +40,7 @@ function CharacterCard({
       {/* Avatar with glow ring */}
       <div className="relative flex-shrink-0">
         <div
-          className="w-10 h-10 rounded-full overflow-hidden transition-all duration-300"
+          className="w-11 h-11 sm:w-10 sm:h-10 rounded-full overflow-hidden transition-all duration-300"
           style={{
             boxShadow: isActive
               ? `0 0 0 2px ${theme.primary}, 0 0 14px ${theme.primary}70`
@@ -71,12 +71,15 @@ function CharacterCard({
       {/* Name + subtitle */}
       <div className="text-left">
         <p
-          className="text-sm font-semibold leading-none transition-colors duration-200 whitespace-nowrap"
+          className="text-[15px] sm:text-sm font-semibold leading-none transition-colors duration-200 whitespace-nowrap"
           style={{ color: isActive ? theme.primary : '#94a3b8' }}
         >
           {character.name}
         </p>
-        <p className="text-[10px] text-slate-600 mt-0.5 whitespace-nowrap">{character.title}</p>
+        {/* Hidden on phones — with 4+ characters the extra line makes each card
+            wide enough that barely one fits, which is what made the header feel
+            cramped. Names alone stay legible and far more fit on screen. */}
+        <p className="hidden sm:block text-[10px] text-slate-600 mt-0.5 whitespace-nowrap">{character.title}</p>
       </div>
 
       {onDelete && (

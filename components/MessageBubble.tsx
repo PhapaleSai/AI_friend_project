@@ -83,8 +83,8 @@ function YouTubeChip({ url }: { url: string }) {
         </svg>
       </div>
       <div className="overflow-hidden">
-        <p className="text-[11px] text-red-300 font-semibold uppercase tracking-wide leading-none mb-0.5">YouTube</p>
-        <p className="text-[12px] text-white font-medium leading-tight truncate" style={{ maxWidth: 200 }}>
+        <p className="text-[12px] sm:text-[11px] text-red-300 font-semibold uppercase tracking-wide leading-none mb-0.5">YouTube</p>
+        <p className="text-[13.5px] sm:text-[12px] text-white font-medium leading-tight truncate" style={{ maxWidth: 200 }}>
           {label}
         </p>
       </div>
@@ -118,10 +118,10 @@ function ArticleChip({ title, url, source }: { title: string; url: string; sourc
         </svg>
       </div>
       <div className="overflow-hidden">
-        <p className="text-[11px] text-blue-300 font-semibold uppercase tracking-wide leading-none mb-0.5">
+        <p className="text-[12px] sm:text-[11px] text-blue-300 font-semibold uppercase tracking-wide leading-none mb-0.5">
           {source || 'Article'}
         </p>
-        <p className="text-[12px] text-white font-medium leading-tight truncate" style={{ maxWidth: 220 }}>
+        <p className="text-[13.5px] sm:text-[12px] text-white font-medium leading-tight truncate" style={{ maxWidth: 220 }}>
           {title}
         </p>
       </div>
@@ -234,7 +234,7 @@ function ReplayVoiceButton({ isSpeaking, onToggle, color }: { isSpeaking: boolea
   return (
     <button
       onClick={onToggle}
-      className="flex items-center gap-1.5 mt-1.5 px-2 py-1 rounded-full text-[10px] font-medium transition-all duration-200 focus:outline-none"
+      className="flex items-center gap-1.5 mt-1.5 px-2 py-1 rounded-full text-[11.5px] sm:text-[10px] font-medium transition-all duration-200 focus:outline-none"
       style={{
         background: isSpeaking ? `${color}22` : 'rgba(255,255,255,0.05)',
         border: `1px solid ${isSpeaking ? color + '50' : 'rgba(255,255,255,0.08)'}`,
@@ -346,7 +346,7 @@ export default function MessageBubble({ message, character, showAvatar = true, i
     return (
       <div className="msg-user flex justify-end mb-2 px-4">
         <div
-          className="selectable max-w-[72%] rounded-2xl rounded-tr-md px-4 py-2.5 text-[14px] leading-[1.6] text-white"
+          className="selectable max-w-[72%] rounded-2xl rounded-tr-md px-4 py-2.5 text-[15.5px] sm:text-[14px] leading-[1.6] text-white"
           style={{
             background: `linear-gradient(135deg, ${theme.primary}cc, ${theme.secondary}99)`,
             boxShadow: `0 2px 12px ${theme.primary}30`,
@@ -378,12 +378,12 @@ export default function MessageBubble({ message, character, showAvatar = true, i
 
       <div className="max-w-[78%] flex flex-col gap-0.5">
         {showAvatar && (
-          <span className="text-[10px] font-semibold ml-1 mb-0.5" style={{ color: theme.nameColor }}>
+          <span className="text-[11.5px] sm:text-[10px] font-semibold ml-1 mb-0.5" style={{ color: theme.nameColor }}>
             {character.name}
           </span>
         )}
         <div
-          className="selectable rounded-2xl rounded-bl-md px-4 py-2.5 text-[14px] leading-[1.65] text-slate-100"
+          className="selectable rounded-2xl rounded-bl-md px-4 py-2.5 text-[15.5px] sm:text-[14px] leading-[1.65] text-slate-100"
           style={{
             background: 'rgba(255,255,255,0.07)',
             border: `1px solid ${theme.primary}18`,
