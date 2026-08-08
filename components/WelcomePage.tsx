@@ -301,8 +301,12 @@ export default function WelcomePage({ onSelect }: WelcomePageProps) {
   };
 
   return (
-    <div className="relative min-h-screen w-full flex flex-col items-center justify-start sm:justify-center px-5 py-10"
-      style={{ background: '#07070f' }}>
+    <div className="relative min-h-full w-full flex flex-col items-center justify-start sm:justify-center px-5"
+      style={{
+        background: '#07070f',
+        paddingTop: 'max(2.5rem, calc(env(safe-area-inset-top) + 1.5rem))',
+        paddingBottom: 'max(2.5rem, calc(env(safe-area-inset-bottom) + 1.5rem))',
+      }}>
 
       {/* ── Moving aurora blobs — fixed so they don't trigger scroll repaints ── */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden" style={{ zIndex: 0 }}>

@@ -383,7 +383,7 @@ export default function MessageBubble({ message, character, showAvatar = true, i
     return (
       <div className="msg-user flex flex-col items-end mb-2 px-4">
         <div
-          className="max-w-[72%] rounded-2xl rounded-tr-md px-4 py-2.5 text-[14px] leading-[1.6] text-white"
+          className="selectable max-w-[72%] rounded-2xl rounded-tr-md px-4 py-2.5 text-[14px] leading-[1.6] text-white"
           style={{
             background: `linear-gradient(135deg, ${theme.primary}cc, ${theme.secondary}99)`,
             boxShadow: `0 2px 12px ${theme.primary}30`,
@@ -423,7 +423,7 @@ export default function MessageBubble({ message, character, showAvatar = true, i
           </span>
         )}
         <div
-          className="rounded-2xl rounded-bl-md px-4 py-2.5 text-[14px] leading-[1.65] text-slate-100"
+          className="selectable rounded-2xl rounded-bl-md px-4 py-2.5 text-[14px] leading-[1.65] text-slate-100"
           style={{
             background: 'rgba(255,255,255,0.07)',
             border: `1px solid ${theme.primary}18`,

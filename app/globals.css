@@ -10,6 +10,14 @@
 
 * { box-sizing: border-box; }
 
+/* ═══════════════════════════════════════════════════════════════
+   NATIVE APP SHELL
+   These rules are what separate "a website in a browser" from
+   "an app". Without them a PWA gives itself away: blue flashes on
+   tap, text selecting when you long-press a button, the whole page
+   rubber-banding, and iOS zooming when you focus the input.
+═══════════════════════════════════════════════════════════════ */
+
 html, body {
   height: 100%;
   margin: 0;
@@ -20,7 +28,59 @@ html, body {
   -webkit-font-smoothing: antialiased;
   /* Smooth native scroll on iOS */
   -webkit-overflow-scrolling: touch;
+  /* Kill rubber-band / pull-to-refresh so the app never feels like a page */
   overscroll-behavior: none;
+  overscroll-behavior-y: contain;
+  /* No grey/blue flash when tapping */
+  -webkit-tap-highlight-color: transparent;
+  /* No double-tap-to-zoom delay; taps register instantly like native */
+  touch-action: manipulation;
+}
+
+body {
+  /* Lock the shell: the app scrolls its own panes, the page itself never does */
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  /* Chrome is not selectable — only message text opts back in below */
+  -webkit-user-select: none;
+  user-select: none;
+  /* No iOS long-press callout menu on buttons/avatars */
+  -webkit-touch-callout: none;
+}
+
+/* Message text and inputs stay selectable so users can copy replies */
+.selectable,
+input,
+textarea {
+  -webkit-user-select: text;
+  user-select: text;
+  -webkit-touch-callout: default;
+}
+
+/* iOS zooms the viewport when focusing any input under 16px. Force 16px on
+   touch devices only — desktop keeps the designed sizes. !important is needed
+   to beat Tailwind's text-* utilities, which outrank a bare element selector. */
+@media (hover: none) and (pointer: coarse) {
+  input,
+  textarea,
+  select {
+    font-size: 16px !important;
+  }
+}
+
+/* Images shouldn't be draggable/savable like page assets */
+img {
+  -webkit-user-drag: none;
+  user-select: none;
+}
+
+/* Full viewport height that accounts for mobile browser chrome.
+   100vh is wrong on phones — it includes the URL bar, pushing the
+   input bar below the fold. dvh tracks the *visible* viewport. */
+.app-screen {
+  height: 100vh;      /* fallback for older browsers */
+  height: 100dvh;
 }
 
 /* ─── Scrollbar ───────────────────────────────────────────────── */
@@ -28,6 +88,25 @@ html, body {
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: rgba(139,92,246,0.3); border-radius: 2px; }
 ::-webkit-scrollbar-thumb:hover { background: rgba(139,92,246,0.5); }
+
+/* Hide scrollbars entirely on touch devices — native apps don't show them */
+@media (hover: none) and (pointer: coarse) {
+  ::-webkit-scrollbar { width: 0; height: 0; }
+  * { scrollbar-width: none; }
+}
+
+/* Installed as a PWA (home-screen app): no browser chrome at all, so the
+   status bar sits directly over our header. Applies automatically — the
+   browser matches this only when launched from the home screen. */
+@media (display-mode: standalone), (display-mode: fullscreen) {
+  html, body {
+    /* Never let the shell itself move; only inner panes scroll */
+    overscroll-behavior: none;
+  }
+  /* Text selection stays off everywhere except message text, so long-press
+     feels like a native app rather than a web page. */
+  body { -webkit-user-select: none; user-select: none; }
+}
 
 /* ─── Glass utilities ─────────────────────────────────────────── */
 @layer components {

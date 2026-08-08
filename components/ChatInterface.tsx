@@ -458,7 +458,7 @@ export default function ChatInterface({ initialCharacter = 'naina', onBack, user
 
   return (
     <div
-      className="flex flex-col h-screen w-screen overflow-hidden"
+      className="app-screen flex flex-col w-full overflow-hidden"
       style={{
         background: `radial-gradient(ellipse at 15% 0%, ${character.theme.primary}0d 0%, transparent 55%),
                      radial-gradient(ellipse at 85% 100%, ${character.theme.secondary}08 0%, transparent 55%),
@@ -489,7 +489,9 @@ export default function ChatInterface({ initialCharacter = 'naina', onBack, user
           backdropFilter: 'blur(24px)',
           borderBottom: `1px solid ${character.theme.primary}18`,
           boxShadow: `0 1px 0 ${character.theme.primary}10`,
-          paddingTop: 'max(0.5rem, env(safe-area-inset-top))',
+          // Status bar overlays the header in standalone mode (black-translucent),
+          // so add the inset plus breathing room rather than sitting flush under it.
+          paddingTop: 'calc(env(safe-area-inset-top, 0px) + 0.5rem)',
         }}
       >
         {/* Left */}

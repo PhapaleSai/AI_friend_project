@@ -1,5 +1,18 @@
-const CACHE_NAME = 'friend-ai-shell-v1';
-const APP_SHELL = ['/', '/manifest.json', '/icon.svg', '/naina.jpg', '/bunny.jpg'];
+// Bump this whenever the shell/assets change — the activate handler deletes
+// every other cache, so installed PWAs pick up the new version cleanly.
+const CACHE_NAME = 'friend-ai-shell-v2';
+const APP_SHELL = [
+  '/',
+  '/manifest.json',
+  '/icon.svg',
+  '/icon-192.png',
+  '/icon-512.png',
+  '/apple-touch-icon.png',
+  '/naina.jpg',
+  '/bunny.jpg',
+  '/aarav-avatar.svg',
+  '/maya-avatar.svg',
+];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
@@ -17,18 +30,37 @@ self.addEventListener('activate', (event) => {
   self.clients.claim();
 });
 
-// Network-first for API calls (always want fresh data), cache-first for the app shell.
 self.addEventListener('fetch', (event) => {
   const { request } = event;
   if (request.method !== 'GET') return;
   const url = new URL(request.url);
+  // API calls always go to the network — never serve stale chat responses.
   if (url.pathname.startsWith('/api/')) return;
 
+  // Page loads use network-first so a new deploy shows up on the very next
+  // launch instead of after a second one. Falls back to cache when offline.
+  if (request.mode === 'navigate') {
+    event.respondWith(
+      fetch(request)
+        .then((res) => {
+          const copy = res.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(request, copy)).catch(() => {});
+          return res;
+        })
+        .catch(() => caches.match(request).then((cached) => cached || caches.match('/')))
+    );
+    return;
+  }
+
+  // Static assets: serve from cache instantly, refresh in the background.
   event.respondWith(
     caches.match(request).then((cached) => {
       const network = fetch(request)
         .then((res) => {
-          if (res.ok) caches.open(CACHE_NAME).then((cache) => cache.put(request, res.clone()));
+          if (res.ok) {
+            const copy = res.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(request, copy)).catch(() => {});
+          }
           return res;
         })
         .catch(() => cached);

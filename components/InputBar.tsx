@@ -67,7 +67,12 @@ export default function InputBar({
   };
 
   return (
-    <div className="px-2 sm:px-3 pt-1.5" style={{ paddingBottom: 'max(1.25rem, env(safe-area-inset-bottom))' }}>
+    <div
+      className="px-2 sm:px-3 pt-1.5"
+      // Clear the home indicator on gesture-nav phones, with a sensible
+      // minimum on devices that report no inset.
+      style={{ paddingBottom: 'max(0.75rem, calc(env(safe-area-inset-bottom, 0px) + 0.5rem))' }}
+    >
       <div
         className="flex items-end gap-2 rounded-2xl px-2 py-1.5 transition-all duration-300"
         style={{
