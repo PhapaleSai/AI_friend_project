@@ -20,6 +20,7 @@ import VoiceOrb from './VoiceOrb';
 import MessageBubble from './MessageBubble';
 import InputBar from './InputBar';
 import CharacterSelector from './CharacterSelector';
+import CharacterSheet from './CharacterSheet';
 import CharacterCreator from './CharacterCreator';
 import MoodSelector from './MoodSelector';
 import ProfilePanel from './ProfilePanel';
@@ -109,6 +110,7 @@ export default function ChatInterface({ initialCharacter = 'naina', onBack, user
   const [searchQuery, setSearchQuery] = useState('');
   const [showMenu, setShowMenu] = useState(false);
   const [showScrollDown, setShowScrollDown] = useState(false);
+  const [showSheet, setShowSheet] = useState(false);
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const recordingHandleRef = useRef<RecordingHandle | null>(null);
@@ -480,6 +482,16 @@ export default function ChatInterface({ initialCharacter = 'naina', onBack, user
       {showCreator && (
         <CharacterCreator onClose={() => setShowCreator(false)} onCreated={handleCharacterCreated} />
       )}
+      {showSheet && (
+        <CharacterSheet
+          characters={Object.values(allCharacters)}
+          selected={characterId}
+          onChange={handleCharacterChange}
+          onCreateNew={() => setShowCreator(true)}
+          onDelete={handleDeleteCharacter}
+          onClose={() => setShowSheet(false)}
+        />
+      )}
 
       {/* ─── Header ─────────────────────────────────────────────── */}
       <header
@@ -499,7 +511,7 @@ export default function ChatInterface({ initialCharacter = 'naina', onBack, user
           {onBack && (
             <button
               onClick={onBack}
-              className="w-10 h-10 sm:w-8 sm:h-8 rounded-xl flex items-center justify-center text-slate-500
+              className="w-10 h-10 lg:w-8 lg:h-8 rounded-xl flex items-center justify-center text-slate-500
                          hover:text-white hover:bg-white/8 transition-all duration-200 focus:outline-none flex-shrink-0"
             >
               <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
@@ -507,13 +519,49 @@ export default function ChatInterface({ initialCharacter = 'naina', onBack, user
               </svg>
             </button>
           )}
-          <CharacterSelector
-            selected={characterId}
-            onChange={handleCharacterChange}
-            characters={Object.values(allCharacters)}
-            onCreateNew={() => setShowCreator(true)}
-            onDelete={handleDeleteCharacter}
-          />
+          {/* Phones: just the active character, tap to switch. Showing all of
+              them inline leaves each card a sliver wide on a narrow screen. */}
+          <button
+            onClick={() => setShowSheet(true)}
+            className="lg:hidden flex items-center gap-2.5 min-w-0 px-2 py-1.5 rounded-2xl transition-all duration-200 active:scale-95 focus:outline-none"
+            style={{ background: character.theme.tabActive, border: `1px solid ${character.theme.primary}45` }}
+          >
+            <div
+              className="w-9 h-9 rounded-full overflow-hidden flex-shrink-0"
+              style={{ boxShadow: `0 0 0 2px ${character.theme.primary}, 0 0 10px ${character.theme.primary}55` }}
+            >
+              <Image
+                src={character.avatar}
+                alt={character.name}
+                width={36}
+                height={36}
+                className="w-full h-full object-cover"
+                style={{ objectPosition: character.avatarPosition }}
+                unoptimized={character.isCustom}
+              />
+            </div>
+            <span
+              className="text-[16px] font-semibold leading-none truncate"
+              style={{ color: character.theme.primary }}
+            >
+              {character.name}
+            </span>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"
+              className="flex-shrink-0" style={{ color: character.theme.primary }}>
+              <path d="M7 10l5 5 5-5z"/>
+            </svg>
+          </button>
+
+          {/* Laptops: the full inline selector, unchanged */}
+          <div className="hidden lg:block min-w-0">
+            <CharacterSelector
+              selected={characterId}
+              onChange={handleCharacterChange}
+              characters={Object.values(allCharacters)}
+              onCreateNew={() => setShowCreator(true)}
+              onDelete={handleDeleteCharacter}
+            />
+          </div>
         </div>
 
         {/* Right */}
@@ -536,11 +584,11 @@ export default function ChatInterface({ initialCharacter = 'naina', onBack, user
           {/* Profile button */}
           <button
             onClick={() => setShowProfile(true)}
-            className="w-10 h-10 sm:w-8 sm:h-8 rounded-xl flex items-center justify-center text-slate-500
+            className="w-10 h-10 lg:w-8 lg:h-8 rounded-xl flex items-center justify-center text-slate-500
                        hover:text-white hover:bg-white/8 transition-all duration-200 focus:outline-none"
             title="Your profile"
           >
-            <svg className="w-[17px] h-[17px] sm:w-[14px] sm:h-[14px]" width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+            <svg className="w-[17px] h-[17px] lg:w-[14px] lg:h-[14px]" width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
               <path d="M12 12c2.7 0 4.9-2.2 4.9-4.9S14.7 2.2 12 2.2 7.1 4.4 7.1 7.1 9.3 12 12 12zm0 2.4c-3.3 0-9.8 1.6-9.8 4.9v2.5h19.6v-2.5c0-3.3-6.5-4.9-9.8-4.9z"/>
             </svg>
           </button>
@@ -549,7 +597,7 @@ export default function ChatInterface({ initialCharacter = 'naina', onBack, user
           {ttsSupported && (
             <button
               onClick={() => { setVoiceEnabled((v) => !v); if (voiceEnabled) stopSpeaking(); }}
-              className="w-10 h-10 sm:w-8 sm:h-8 rounded-xl flex items-center justify-center transition-all duration-200 focus:outline-none"
+              className="w-10 h-10 lg:w-8 lg:h-8 rounded-xl flex items-center justify-center transition-all duration-200 focus:outline-none"
               style={{
                 background: voiceEnabled ? `${character.theme.primary}18` : 'transparent',
                 border: `1px solid ${voiceEnabled ? character.theme.primary + '35' : 'rgba(255,255,255,0.07)'}`,
@@ -558,11 +606,11 @@ export default function ChatInterface({ initialCharacter = 'naina', onBack, user
               title={voiceEnabled ? 'Mute' : 'Unmute'}
             >
               {voiceEnabled ? (
-                <svg className="w-4 h-4 sm:w-[13px] sm:h-[13px]" width="13" height="13" viewBox="0 0 24 24" fill="currentColor">
+                <svg className="w-4 h-4 lg:w-[13px] lg:h-[13px]" width="13" height="13" viewBox="0 0 24 24" fill="currentColor">
                   <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02z"/>
                 </svg>
               ) : (
-                <svg className="w-4 h-4 sm:w-[13px] sm:h-[13px]" width="13" height="13" viewBox="0 0 24 24" fill="currentColor">
+                <svg className="w-4 h-4 lg:w-[13px] lg:h-[13px]" width="13" height="13" viewBox="0 0 24 24" fill="currentColor">
                   <path d="M16.5 12c0-1.77-1.02-3.29-2.5-4.03v2.21l2.45 2.45c.03-.2.05-.41.05-.63zm2.5 0c0 .94-.2 1.82-.54 2.64l1.51 1.51C20.63 14.91 21 13.5 21 12c0-4.28-2.99-7.86-7-8.77v2.06c2.89.86 5 3.54 5 6.71zM4.27 3L3 4.27 7.73 9H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.18v2.06c1.38-.31 2.63-.95 3.69-1.81L19.73 21 21 19.73l-9-9L4.27 3zM12 4L9.91 6.09 12 8.18V4z"/>
                 </svg>
               )}
@@ -578,14 +626,14 @@ export default function ChatInterface({ initialCharacter = 'naina', onBack, user
                   return !v;
                 });
               }}
-              className="w-10 h-10 sm:w-8 sm:h-8 rounded-xl flex items-center justify-center transition-all duration-200 focus:outline-none"
+              className="w-10 h-10 lg:w-8 lg:h-8 rounded-xl flex items-center justify-center transition-all duration-200 focus:outline-none"
               style={{
                 background: showSearch ? `${character.theme.primary}18` : 'transparent',
                 color: showSearch ? character.theme.primary : '#64748b',
               }}
               title="Search this chat"
             >
-              <svg className="w-[17px] h-[17px] sm:w-[14px] sm:h-[14px]" width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+              <svg className="w-[17px] h-[17px] lg:w-[14px] lg:h-[14px]" width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
                 <path d="M15.5 14h-.79l-.28-.27A6.47 6.47 0 0016 9.5 6.5 6.5 0 109.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>
               </svg>
             </button>
@@ -596,11 +644,11 @@ export default function ChatInterface({ initialCharacter = 'naina', onBack, user
             <div className="relative">
               <button
                 onClick={() => setShowMenu((v) => !v)}
-                className="w-10 h-10 sm:w-8 sm:h-8 rounded-xl flex items-center justify-center text-slate-500
+                className="w-10 h-10 lg:w-8 lg:h-8 rounded-xl flex items-center justify-center text-slate-500
                            hover:text-white hover:bg-white/8 transition-all duration-200 focus:outline-none"
                 title="More"
               >
-                <svg className="w-[17px] h-[17px] sm:w-[14px] sm:h-[14px]" width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                <svg className="w-[17px] h-[17px] lg:w-[14px] lg:h-[14px]" width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
                   <path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/>
                 </svg>
               </button>
@@ -619,7 +667,7 @@ export default function ChatInterface({ initialCharacter = 'naina', onBack, user
                     {character.isCustom && (
                       <button
                         onClick={() => { setShowMenu(false); handleShareCharacter(); }}
-                        className="w-full text-left px-3.5 py-3 sm:py-2.5 text-[14px] sm:text-xs text-slate-300 hover:bg-white/8 transition-colors focus:outline-none"
+                        className="w-full text-left px-3.5 py-3 lg:py-2.5 text-[14px] lg:text-xs text-slate-300 hover:bg-white/8 transition-colors focus:outline-none"
                       >
                         Share this character
                       </button>
@@ -627,7 +675,7 @@ export default function ChatInterface({ initialCharacter = 'naina', onBack, user
                     {hasMessages && (
                       <button
                         onClick={() => { setShowMenu(false); handleExport(); }}
-                        className="w-full text-left px-3.5 py-3 sm:py-2.5 text-[14px] sm:text-xs text-slate-300 hover:bg-white/8 transition-colors focus:outline-none"
+                        className="w-full text-left px-3.5 py-3 lg:py-2.5 text-[14px] lg:text-xs text-slate-300 hover:bg-white/8 transition-colors focus:outline-none"
                       >
                         Export chat (.md)
                       </button>
@@ -635,7 +683,7 @@ export default function ChatInterface({ initialCharacter = 'naina', onBack, user
                     {hasMessages && (
                       <button
                         onClick={() => { setShowMenu(false); handleClear(); }}
-                        className="w-full text-left px-3.5 py-3 sm:py-2.5 text-[14px] sm:text-xs text-red-400 hover:bg-white/8 transition-colors focus:outline-none"
+                        className="w-full text-left px-3.5 py-3 lg:py-2.5 text-[14px] lg:text-xs text-red-400 hover:bg-white/8 transition-colors focus:outline-none"
                       >
                         Clear chat
                       </button>
@@ -659,7 +707,7 @@ export default function ChatInterface({ initialCharacter = 'naina', onBack, user
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search this conversation..."
-            className="flex-1 min-w-0 bg-transparent text-[16px] sm:text-sm text-slate-100 placeholder-slate-600 focus:outline-none py-1"
+            className="flex-1 min-w-0 bg-transparent text-[16px] lg:text-sm text-slate-100 placeholder-slate-600 focus:outline-none py-1"
           />
           <span className="text-[11px] text-slate-600 flex-shrink-0">
             {trimmedQuery ? `${visibleMessages.length} found` : ''}
@@ -668,7 +716,7 @@ export default function ChatInterface({ initialCharacter = 'naina', onBack, user
             onClick={() => { setShowSearch(false); setSearchQuery(''); }}
             className="w-6 h-6 rounded-lg flex items-center justify-center text-slate-500 hover:text-white transition-colors focus:outline-none flex-shrink-0"
           >
-            <svg className="w-[17px] h-[17px] sm:w-[14px] sm:h-[14px]" width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+            <svg className="w-[17px] h-[17px] lg:w-[14px] lg:h-[14px]" width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
           </button>
         </div>
       )}
@@ -743,7 +791,7 @@ export default function ChatInterface({ initialCharacter = 'naina', onBack, user
               >
                 Hey, I&apos;m {character.name} {character.emoji}
               </h2>
-              <p className="text-slate-400 text-[15px] sm:text-sm max-w-[300px] mx-auto leading-relaxed">{character.subtitle}</p>
+              <p className="text-slate-400 text-[15px] lg:text-sm max-w-[300px] mx-auto leading-relaxed">{character.subtitle}</p>
               {memoryFacts.length > 0 && (
                 <p className="text-slate-600 text-xs mt-2 flex items-center justify-center gap-1">
                   <span>💭</span> Remembers your past conversations
@@ -758,7 +806,7 @@ export default function ChatInterface({ initialCharacter = 'naina', onBack, user
                   key={prompt}
                   onClick={() => sendMessage(prompt)}
                   disabled={isLoading}
-                  className="px-4 py-2.5 sm:py-2 rounded-full text-[14.5px] sm:text-sm text-slate-300 hover:text-white
+                  className="px-4 py-2.5 lg:py-2 rounded-full text-[14.5px] lg:text-sm text-slate-300 hover:text-white
                              transition-all duration-200 hover:scale-105 active:scale-95 focus:outline-none"
                   style={{
                     background: `${character.theme.primary}0f`,
@@ -772,7 +820,7 @@ export default function ChatInterface({ initialCharacter = 'naina', onBack, user
             </div>
 
             {voiceSupported && (
-              <p className="text-slate-700 text-[13px] sm:text-xs">Hold the photo to record · or type below</p>
+              <p className="text-slate-700 text-[13px] lg:text-xs">Hold the photo to record · or type below</p>
             )}
           </div>
         ) : (
