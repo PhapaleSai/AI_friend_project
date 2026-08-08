@@ -216,43 +216,6 @@ function MessageContent({ text, isStreaming, highlight }: { text: string; isStre
   );
 }
 
-/** Renders as h:mm — messages saved before timestamps existed render nothing. */
-function formatTime(iso?: string): string {
-  if (!iso) return '';
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return '';
-  return d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
-}
-
-function CopyButton({ text, color }: { text: string; color: string }) {
-  const [copied, setCopied] = useState(false);
-  return (
-    <button
-      onClick={async () => {
-        try {
-          await navigator.clipboard.writeText(text);
-          setCopied(true);
-          setTimeout(() => setCopied(false), 1500);
-        } catch { /* clipboard unavailable — nothing useful to show */ }
-      }}
-      className="flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-medium transition-all duration-200 focus:outline-none"
-      style={{
-        background: copied ? `${color}22` : 'rgba(255,255,255,0.05)',
-        border: `1px solid ${copied ? color + '50' : 'rgba(255,255,255,0.08)'}`,
-        color: copied ? color : '#64748b',
-      }}
-      title="Copy message"
-    >
-      {copied ? (
-        <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
-      ) : (
-        <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
-      )}
-      {copied ? 'Copied' : 'Copy'}
-    </button>
-  );
-}
-
 function VoiceNoteRow({ audioUrl, color }: { audioUrl: string; color: string }) {
   return (
     <div className="flex items-center gap-2 mb-1.5">
@@ -271,7 +234,7 @@ function ReplayVoiceButton({ isSpeaking, onToggle, color }: { isSpeaking: boolea
   return (
     <button
       onClick={onToggle}
-      className="flex items-center gap-1.5 px-2 py-1 rounded-full text-[10px] font-medium transition-all duration-200 focus:outline-none"
+      className="flex items-center gap-1.5 mt-1.5 px-2 py-1 rounded-full text-[10px] font-medium transition-all duration-200 focus:outline-none"
       style={{
         background: isSpeaking ? `${color}22` : 'rgba(255,255,255,0.05)',
         border: `1px solid ${isSpeaking ? color + '50' : 'rgba(255,255,255,0.08)'}`,
@@ -381,7 +344,7 @@ export default function MessageBubble({ message, character, showAvatar = true, i
 
   if (isUser) {
     return (
-      <div className="msg-user flex flex-col items-end mb-2 px-4">
+      <div className="msg-user flex justify-end mb-2 px-4">
         <div
           className="selectable max-w-[72%] rounded-2xl rounded-tr-md px-4 py-2.5 text-[14px] leading-[1.6] text-white"
           style={{
@@ -394,9 +357,6 @@ export default function MessageBubble({ message, character, showAvatar = true, i
           )}
           {highlightText(message.content, highlight)}
         </div>
-        {message.createdAt && (
-          <span className="text-[10px] text-slate-600 mt-0.5 mr-1">{formatTime(message.createdAt)}</span>
-        )}
       </div>
     );
   }
@@ -440,16 +400,8 @@ export default function MessageBubble({ message, character, showAvatar = true, i
           )}
           {message.emailDraft && <EmailDraftCard draft={message.emailDraft} color={theme.primary} />}
         </div>
-        {!message.isStreaming && message.content && (
-          <div className="flex items-center flex-wrap gap-1.5 mt-1.5">
-            {onToggleSpeak && (
-              <ReplayVoiceButton isSpeaking={isSpeaking} onToggle={onToggleSpeak} color={theme.primary} />
-            )}
-            <CopyButton text={message.content} color={theme.primary} />
-            {message.createdAt && (
-              <span className="text-[10px] text-slate-600 ml-0.5">{formatTime(message.createdAt)}</span>
-            )}
-          </div>
+        {!message.isStreaming && message.content && onToggleSpeak && (
+          <ReplayVoiceButton isSpeaking={isSpeaking} onToggle={onToggleSpeak} color={theme.primary} />
         )}
       </div>
     </div>
