@@ -5,6 +5,7 @@ import Image from 'next/image';
 import { CHARACTERS, type CharacterId, type CharacterConfig } from '@/lib/characters';
 import { getAllCharacters } from '@/lib/customCharacters';
 import CharacterCreator from './CharacterCreator';
+import InstallPrompt from './InstallPrompt';
 
 const NAME_KEY = 'friend-ai-username';
 
@@ -382,6 +383,9 @@ export default function WelcomePage({ onSelect }: WelcomePageProps) {
           Talk, laugh & learn — like they&apos;re really there
         </p>
       </div>
+
+      {/* ── Install app prompt (hidden once installed / dismissed) ── */}
+      <InstallPrompt />
 
       {/* ── Name input ── */}
       <div className="relative z-10 w-full max-w-[380px] mb-7"
