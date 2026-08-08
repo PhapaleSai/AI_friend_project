@@ -2,7 +2,7 @@ import Groq from 'groq-sdk';
 import { CHARACTERS, buildSystemPrompt } from '@/lib/characters';
 import type { CharacterId } from '@/lib/characters';
 import { shouldSearch, searchWeb, buildSearchContext } from '@/lib/search';
-import { shouldDraftEmail, draftEmailFromConversation, type EmailDraft } from '@/lib/email';
+import { shouldDraftEmail, draftEmailFromConversation, isEmailConfigured, type EmailDraft } from '@/lib/email';
 import { toneInstruction, type UserProfile } from '@/lib/profile';
 import { SOURCES_DELIMITER, EMAIL_DELIMITER } from '@/lib/constants';
 
@@ -42,7 +42,9 @@ export async function POST(req: Request) {
     }
 
     let emailDraft: EmailDraft | null = null;
-    if (lastUserMessage && shouldDraftEmail(lastUserMessage)) {
+    // Skip drafting entirely when sending isn't configured — otherwise we'd
+    // burn an LLM call to show a draft card whose Send button can only fail.
+    if (lastUserMessage && isEmailConfigured() && shouldDraftEmail(lastUserMessage)) {
       emailDraft = await draftEmailFromConversation(messages, userName ?? '');
       if (emailDraft) {
         extraContext += `\n\n[The user asked you to draft/send an email. A draft card with the full email will be shown separately below your reply, so just acknowledge naturally in 1 sentence — don't write out the email content yourself, and don't mention "draft card" explicitly.]`;

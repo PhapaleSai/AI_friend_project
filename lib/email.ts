@@ -4,6 +4,10 @@ const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
 const EMAIL_TRIGGERS = /\b(send (an? )?e-?mail|e-?mail (this|that|him|her|them|to|my)|draft (an? )?e-?mail|write (an? )?e-?mail|mail (bhej|kar de|likh))\b/i;
 
+export function isEmailConfigured(): boolean {
+  return !!process.env.RESEND_API_KEY;
+}
+
 /** Cheap heuristic gate, same style as shouldSearch — avoids an extra model call on every message. */
 export function shouldDraftEmail(userMessage: string): boolean {
   return EMAIL_TRIGGERS.test(userMessage);
