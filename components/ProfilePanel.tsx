@@ -39,10 +39,7 @@ export default function ProfilePanel({
   }, [voiceReady, voiceLoading]);
 
   const handleSave = () => {
-    // voiceDefaultApplied must survive the save, otherwise loadProfile would
-    // treat a deliberate opt-out as a pre-migration profile and switch the
-    // voice back on next time.
-    onSave({ nickname: nickname.trim(), birthday, tone, betterVoice, voiceDefaultApplied: true });
+    onSave({ nickname: nickname.trim(), birthday, tone, betterVoice });
     onClose();
   };
 
@@ -149,8 +146,8 @@ export default function ProfilePanel({
                     : betterVoice && voiceLoading
                     ? 'Downloading in the background — standard voice until then'
                     : betterVoice
-                    ? 'Natural on-device voice. Downloads (~86MB) the first time you play a reply'
-                    : 'Natural on-device voice. One-time ~86MB download, then offline'}
+                    ? 'Natural on-device voice'
+                    : 'One-time ~86MB download, then works offline. Heavy on older phones'}
                 </p>
               </div>
               {/* Switch */}

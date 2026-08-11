@@ -6,24 +6,16 @@ export interface UserProfile {
   nickname: string;
   birthday: string; // YYYY-MM-DD, empty if unset
   tone: 'default' | 'gentle' | 'blunt' | 'hype';
-  /** Higher-quality on-device Kokoro voice. On by default; can be switched off. */
+  /** Opt in to the higher-quality on-device Kokoro voice (one-time ~86MB download). */
   betterVoice: boolean;
   /**
-   * Marks that this profile has been through the "better voice is now the
-   * default" migration. Without it we can't tell a user who deliberately
-   * turned the voice off from one whose profile predates the default flip —
-   * both store `betterVoice: false`, and we'd keep re-enabling it on them.
+   * Legacy marker from the brief period when the neural voice was on by
+   * default. Only still read to undo that — see loadProfile.
    */
   voiceDefaultApplied?: boolean;
 }
 
-const DEFAULT_PROFILE: UserProfile = {
-  nickname: '',
-  birthday: '',
-  tone: 'default',
-  betterVoice: true,
-  voiceDefaultApplied: true,
-};
+const DEFAULT_PROFILE: UserProfile = { nickname: '', birthday: '', tone: 'default', betterVoice: false };
 
 export function loadProfile(): UserProfile {
   if (typeof window === 'undefined') return DEFAULT_PROFILE;
@@ -32,12 +24,15 @@ export function loadProfile(): UserProfile {
     if (!raw) return DEFAULT_PROFILE;
     const saved = JSON.parse(raw) as Partial<UserProfile>;
     const profile = { ...DEFAULT_PROFILE, ...saved };
-    // Profiles saved before the flip carry an explicit `betterVoice: false`
-    // that only meant "the old default" — upgrade them once, then respect
-    // whatever the user chooses from here on.
-    if (!saved.voiceDefaultApplied) {
-      profile.betterVoice = true;
-      profile.voiceDefaultApplied = true;
+    // The neural voice was default-on for one release and made phones crawl.
+    // Switching the default back isn't enough on its own — those profiles have
+    // `betterVoice: true` written to localStorage and would stay slow. Turn it
+    // off once for anyone auto-enabled, then drop the marker and persist, so a
+    // deliberate re-enable later is never clobbered.
+    if (saved.voiceDefaultApplied) {
+      profile.betterVoice = false;
+      delete profile.voiceDefaultApplied;
+      saveProfile(profile);
     }
     return profile;
   } catch {
