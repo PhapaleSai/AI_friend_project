@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import type { UserProfile } from '@/lib/profile';
 import { TONE_LABELS } from '@/lib/profile';
-import { loadKokoro, isKokoroReady, isKokoroSupported } from '@/lib/kokoro';
+import { loadKokoro, isKokoroReady, isKokoroLoading, isKokoroSupported } from '@/lib/kokoro';
 
 interface ProfilePanelProps {
   profile: UserProfile;
@@ -25,16 +25,18 @@ export default function ProfilePanel({
   const [voiceProgress, setVoiceProgress] = useState<number | null>(null);
   const [voiceError, setVoiceError] = useState('');
   const [voiceReady, setVoiceReady] = useState(isKokoroReady());
+  const [voiceLoading, setVoiceLoading] = useState(isKokoroLoading());
 
-  // The download is usually kicked off in the background at app start, so this
-  // panel has no callback to hook into — poll until the model is resident.
+  // A download started by playback has no callback to hand this panel, so poll
+  // for it — but only while one is actually in flight, otherwise the interval
+  // would tick forever behind an idle panel.
   useEffect(() => {
-    if (voiceReady || !betterVoice) return;
+    if (voiceReady || !voiceLoading) return;
     const id = setInterval(() => {
-      if (isKokoroReady()) setVoiceReady(true);
+      if (isKokoroReady()) { setVoiceReady(true); setVoiceLoading(false); }
     }, 1000);
     return () => clearInterval(id);
-  }, [voiceReady, betterVoice]);
+  }, [voiceReady, voiceLoading]);
 
   const handleSave = () => {
     // voiceDefaultApplied must survive the save, otherwise loadProfile would
@@ -144,8 +146,10 @@ export default function ProfilePanel({
                     ? `Downloading voice… ${voiceProgress}%`
                     : betterVoice && voiceReady
                     ? 'Natural on-device voice — active'
+                    : betterVoice && voiceLoading
+                    ? 'Downloading in the background — standard voice until then'
                     : betterVoice
-                    ? 'Getting ready in the background — standard voice until then'
+                    ? 'Natural on-device voice. Downloads (~86MB) the first time you play a reply'
                     : 'Natural on-device voice. One-time ~86MB download, then offline'}
                 </p>
               </div>

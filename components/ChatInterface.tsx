@@ -15,7 +15,6 @@ import {
   joinFacts,
 } from '@/lib/memory';
 import { loadProfile, saveProfile, type UserProfile } from '@/lib/profile';
-import { prefetchKokoro } from '@/lib/kokoro';
 import { SOURCES_DELIMITER, EMAIL_DELIMITER } from '@/lib/constants';
 import VoiceOrb from './VoiceOrb';
 import MessageBubble from './MessageBubble';
@@ -141,21 +140,7 @@ export default function ChatInterface({ initialCharacter = 'naina', onBack, user
     }
     setMessagesByChar(nextMessages);
     setMemoryByChar(nextMemory);
-    const loadedProfile = loadProfile();
-    setProfile(loadedProfile);
-
-    // Warm the neural voice while the user is still reading/typing, so the
-    // first spoken reply already has it. Deferred to idle time so the download
-    // never competes with the first paint, and skipped entirely on a metered
-    // connection — an 86MB fetch on mobile data isn't ours to spend.
-    if (loadedProfile.betterVoice) {
-      const conn = (navigator as Navigator & { connection?: { saveData?: boolean } }).connection;
-      if (!conn?.saveData) {
-        const idle = (window as Window & { requestIdleCallback?: (cb: () => void) => void }).requestIdleCallback;
-        if (idle) idle(() => prefetchKokoro());
-        else setTimeout(prefetchKokoro, 2000);
-      }
-    }
+    setProfile(loadProfile());
 
     if (!sessionStorage.getItem(MOOD_SESSION_KEY)) setShowMood(true);
 

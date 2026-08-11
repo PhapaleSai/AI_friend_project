@@ -8,9 +8,10 @@ import type { VoiceSettings } from './characters';
  * cached, and sounds markedly better than the Web Speech API.
  *
  * The tradeoff is a one-time model download (~86MB at q8). It's on by default
- * but never blocking: replies are spoken with browser synthesis until the
- * model is resident, and every failure path falls back to it rather than
- * leaving the user with no voice at all.
+ * but costs nothing until it's used: the download starts on the first attempt
+ * to speak, replies are spoken with browser synthesis until the model is
+ * resident, and every failure path falls back to it rather than leaving the
+ * user with no voice at all.
  */
 
 const MODEL_ID = 'onnx-community/Kokoro-82M-v1.0-ONNX';
@@ -77,11 +78,18 @@ export function loadKokoro(onProgress?: (pct: number) => void): Promise<KokoroMo
 
 /**
  * Starts the download in the background if it hasn't begun, without making the
- * caller wait on it. Used to warm the model up while the user is still typing
- * so the first spoken reply lands on the good voice.
+ * caller wait on it. Triggered by the first attempt to speak — nothing is
+ * fetched for a visitor who never plays a reply.
+ *
+ * Skipped on a metered connection: this is an implicit fetch the user didn't
+ * ask for, so it doesn't get to spend 86MB of someone's mobile data. Toggling
+ * the voice on from the profile panel calls loadKokoro directly and is exempt,
+ * being an explicit choice.
  */
 export function prefetchKokoro(): void {
   if (modelPromise || !isKokoroSupported()) return;
+  const conn = (navigator as Navigator & { connection?: { saveData?: boolean } }).connection;
+  if (conn?.saveData) return;
   loadKokoro().catch(() => { /* speech falls back to the browser voice */ });
 }
 
