@@ -11,6 +11,27 @@
 * { box-sizing: border-box; }
 
 /* ═══════════════════════════════════════════════════════════════
+   FLUID ROOT SIZE
+   Every size in the app is expressed in rem (Tailwind's spacing and
+   text scales are rem, and the custom text-[…] values were converted
+   to rem too). That makes the root font-size a single dial for the
+   whole UI: bump it and text, padding, gaps and icons all grow
+   together, keeping the proportions the desktop layout was designed
+   with instead of shrinking into a miniature website on a phone.
+═══════════════════════════════════════════════════════════════ */
+
+/* Phones: scale with viewport width, floored so tiny devices stay legible
+   and capped so large phones don't turn cartoonish. */
+@media (max-width: 767px) {
+  html { font-size: clamp(17px, 4.8vw, 22px); }
+}
+
+/* Tablets / small windows: one modest step up from the desktop baseline. */
+@media (min-width: 768px) and (max-width: 1023px) {
+  html { font-size: 18px; }
+}
+
+/* ═══════════════════════════════════════════════════════════════
    NATIVE APP SHELL
    These rules are what separate "a website in a browser" from
    "an app". Without them a PWA gives itself away: blue flashes on
@@ -58,14 +79,17 @@ textarea {
   -webkit-touch-callout: default;
 }
 
-/* iOS zooms the viewport when focusing any input under 16px. Force 16px on
-   touch devices only — desktop keeps the designed sizes. !important is needed
-   to beat Tailwind's text-* utilities, which outrank a bare element selector. */
+/* iOS zooms the viewport when focusing any input under 16px. 1rem is >=17px
+   on touch devices thanks to the fluid root above, so this clears the zoom
+   threshold while still scaling with the rest of the UI (a hard 16px would
+   leave inputs visibly smaller than the text around them). !important is
+   needed to beat Tailwind's text-* utilities, which outrank a bare element
+   selector. */
 @media (hover: none) and (pointer: coarse) {
   input,
   textarea,
   select {
-    font-size: 16px !important;
+    font-size: 1rem !important;
   }
 }
 

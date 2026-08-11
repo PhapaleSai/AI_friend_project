@@ -128,7 +128,7 @@ export default function InputBar({
                 />
               ))}
             </div>
-            <span className="text-[13px] lg:text-xs font-medium animate-pulse truncate" style={{ color: accentColor }}>
+            <span className="text-[0.8125rem] lg:text-xs font-medium animate-pulse truncate" style={{ color: accentColor }}>
               Recording... release to send
             </span>
           </div>
@@ -141,7 +141,7 @@ export default function InputBar({
             placeholder="Message..."
             disabled={isDisabled}
             rows={1}
-            className="flex-1 bg-transparent resize-none text-[16px] text-slate-100 placeholder-slate-600
+            className="flex-1 bg-transparent resize-none text-[1.0000rem] text-slate-100 placeholder-slate-600
                        focus:outline-none leading-relaxed py-2 px-1"
             style={{ maxHeight: '120px', minHeight: '40px', opacity: isDisabled ? 0.5 : 1 }}
           />

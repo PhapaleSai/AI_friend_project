@@ -79,7 +79,7 @@ function CharacterCard({ character, onSelect, index, disabled }: {
   return (
     <div
       ref={cardRef}
-      className="relative w-full sm:w-[250px] flex-shrink-0 cursor-pointer select-none"
+      className="relative w-full sm:w-[15.6250rem] flex-shrink-0 cursor-pointer select-none"
       style={{
         animation: `slide-up 0.7s ${300 + index * 160}ms cubic-bezier(0.16,1,0.3,1) both`,
         opacity: disabled ? 0.4 : 1,
@@ -168,7 +168,7 @@ function CharacterCard({ character, onSelect, index, disabled }: {
               priority />
           </div>
           {/* Online badge */}
-          <div className="absolute bottom-0 right-0 flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10.5px] lg:text-[9px] font-bold"
+          <div className="absolute bottom-0 right-0 flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[0.6562rem] lg:text-[0.5625rem] font-bold"
             style={{
               background: `${character.theme.primary}30`, border: `1px solid ${character.theme.primary}60`,
               color: character.theme.primary, backdropFilter: 'blur(8px)',
@@ -190,7 +190,7 @@ function CharacterCard({ character, onSelect, index, disabled }: {
             }}>
             {character.name}
           </h3>
-          <p className="text-[13px] lg:text-xs font-semibold uppercase tracking-widest mt-1"
+          <p className="text-[0.8125rem] lg:text-xs font-semibold uppercase tracking-widest mt-1"
             style={{ color: character.theme.primary + 'aa' }}>
             {character.title}
           </p>
@@ -203,7 +203,7 @@ function CharacterCard({ character, onSelect, index, disabled }: {
         {/* Trait pills */}
         <div className="flex flex-wrap justify-center gap-1.5">
           {character.subtitle.split(' · ').map((t) => (
-            <span key={t} className="px-2.5 py-1 rounded-lg text-[12.5px] lg:text-[11px] font-semibold transition-all duration-300"
+            <span key={t} className="px-2.5 py-1 rounded-lg text-[0.7812rem] lg:text-[0.6875rem] font-semibold transition-all duration-300"
               style={{
                 background: `${character.theme.primary}${hovered ? '25' : '12'}`,
                 border: `1px solid ${character.theme.primary}${hovered ? '50' : '25'}`,
@@ -217,7 +217,7 @@ function CharacterCard({ character, onSelect, index, disabled }: {
 
         {/* CTA */}
         <button
-          className="w-full py-4 lg:py-3.5 rounded-xl text-[15px] lg:text-sm font-bold text-white flex items-center justify-center gap-2
+          className="w-full py-4 lg:py-3.5 rounded-xl text-[0.9375rem] lg:text-sm font-bold text-white flex items-center justify-center gap-2
                      transition-all duration-300 focus:outline-none active:scale-95 relative overflow-hidden"
           style={{
             background: hovered
@@ -251,7 +251,7 @@ function CreateCard({ onClick, index, disabled }: { onClick: () => void; index: 
     <button
       onClick={disabled ? undefined : onClick}
       disabled={disabled}
-      className="relative w-full sm:w-[250px] flex-shrink-0 rounded-3xl flex flex-col items-center justify-center gap-3 py-10 px-4 focus:outline-none transition-opacity duration-300"
+      className="relative w-full sm:w-[15.6250rem] flex-shrink-0 rounded-3xl flex flex-col items-center justify-center gap-3 py-10 px-4 focus:outline-none transition-opacity duration-300"
       style={{
         animation: `slide-up 0.7s ${300 + index * 160}ms cubic-bezier(0.16,1,0.3,1) both`,
         background: 'rgba(13,13,26,0.6)',
@@ -262,7 +262,7 @@ function CreateCard({ onClick, index, disabled }: { onClick: () => void; index: 
       <div className="w-12 h-12 rounded-full flex items-center justify-center" style={{ background: 'rgba(255,255,255,0.06)' }}>
         <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" className="text-slate-400"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
       </div>
-      <p className="text-[15px] lg:text-sm font-semibold text-slate-300">Create your own AI friend</p>
+      <p className="text-[0.9375rem] lg:text-sm font-semibold text-slate-300">Create your own AI friend</p>
     </button>
   );
 }
@@ -356,7 +356,7 @@ export default function WelcomePage({ onSelect }: WelcomePageProps) {
               </div>
             ))}
           </div>
-          <span className="text-[12.5px] lg:text-[11px] font-bold text-slate-400 uppercase tracking-widest">Friend AI</span>
+          <span className="text-[0.7812rem] lg:text-[0.6875rem] font-bold text-slate-400 uppercase tracking-widest">Friend AI</span>
           <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
         </div>
 
@@ -404,8 +404,8 @@ export default function WelcomePage({ onSelect }: WelcomePageProps) {
                 {name.trim()[0]?.toUpperCase()}
               </div>
               <div>
-                <p className="text-white text-[15px] lg:text-sm font-semibold leading-none">{name.trim()}</p>
-                <p className="text-slate-500 text-[11.5px] lg:text-[10px] mt-0.5">tap to change</p>
+                <p className="text-white text-[0.9375rem] lg:text-sm font-semibold leading-none">{name.trim()}</p>
+                <p className="text-slate-500 text-[0.7188rem] lg:text-[0.6250rem] mt-0.5">tap to change</p>
               </div>
             </div>
             <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" className="text-slate-600">
@@ -414,7 +414,7 @@ export default function WelcomePage({ onSelect }: WelcomePageProps) {
           </div>
         ) : (
           <div>
-            <p className="text-slate-400 text-[15px] lg:text-sm text-center mb-2.5">
+            <p className="text-slate-400 text-[0.9375rem] lg:text-sm text-center mb-2.5">
               {name ? `Hi ${name.trim()}! 👋` : 'What should we call you?'}
             </p>
             <div className="flex items-center gap-2 rounded-2xl px-2 py-2 transition-all duration-300"
@@ -432,10 +432,10 @@ export default function WelcomePage({ onSelect }: WelcomePageProps) {
                 placeholder="Your name..."
                 autoFocus
                 maxLength={24}
-                className="flex-1 bg-transparent text-[16px] lg:text-sm text-white placeholder-slate-600 focus:outline-none px-2 py-2"
+                className="flex-1 bg-transparent text-[1.0000rem] lg:text-sm text-white placeholder-slate-600 focus:outline-none px-2 py-2"
               />
               <button onClick={handleNameSubmit} disabled={!name.trim()}
-                className="px-4 py-2.5 lg:py-2 rounded-xl text-[14px] lg:text-xs font-bold text-white transition-all duration-200 focus:outline-none active:scale-95"
+                className="px-4 py-2.5 lg:py-2 rounded-xl text-[0.8750rem] lg:text-xs font-bold text-white transition-all duration-200 focus:outline-none active:scale-95"
                 style={{
                   background: name.trim() ? 'linear-gradient(135deg, #c084fc, #f97316)' : 'rgba(255,255,255,0.06)',
                   color: name.trim() ? 'white' : '#475569',
@@ -479,7 +479,7 @@ export default function WelcomePage({ onSelect }: WelcomePageProps) {
       )}
 
       {!nameSubmitted && (
-        <p className="relative z-10 mt-5 text-slate-600 text-[13px] lg:text-xs animate-pulse">
+        <p className="relative z-10 mt-5 text-slate-600 text-[0.8125rem] lg:text-xs animate-pulse">
           Enter your name above to start chatting
         </p>
       )}
@@ -490,7 +490,7 @@ export default function WelcomePage({ onSelect }: WelcomePageProps) {
         <p className="text-slate-600 text-xs tracking-wide">
           ✦ Inspired by <span className="text-slate-500 font-medium">Yeh Jawaani Hai Deewani</span> ✦
         </p>
-        <p className="text-slate-700 text-[11px] font-medium">
+        <p className="text-slate-700 text-[0.6875rem] font-medium">
           😊 All Copyrights owned by Sai 😊
         </p>
       </div>

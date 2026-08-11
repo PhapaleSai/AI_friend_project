@@ -71,7 +71,7 @@ function CharacterCard({
       {/* Name + subtitle */}
       <div className="text-left">
         <p
-          className="text-[15px] lg:text-sm font-semibold leading-none transition-colors duration-200 whitespace-nowrap"
+          className="text-[0.9375rem] lg:text-sm font-semibold leading-none transition-colors duration-200 whitespace-nowrap"
           style={{ color: isActive ? theme.primary : '#94a3b8' }}
         >
           {character.name}
@@ -79,7 +79,7 @@ function CharacterCard({
         {/* Hidden on phones — with 4+ characters the extra line makes each card
             wide enough that barely one fits, which is what made the header feel
             cramped. Names alone stay legible and far more fit on screen. */}
-        <p className="hidden lg:block text-[10px] text-slate-600 mt-0.5 whitespace-nowrap">{character.title}</p>
+        <p className="hidden lg:block text-[0.6250rem] text-slate-600 mt-0.5 whitespace-nowrap">{character.title}</p>
       </div>
 
       {onDelete && (

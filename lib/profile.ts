@@ -6,18 +6,40 @@ export interface UserProfile {
   nickname: string;
   birthday: string; // YYYY-MM-DD, empty if unset
   tone: 'default' | 'gentle' | 'blunt' | 'hype';
-  /** Opt in to the higher-quality on-device Kokoro voice (one-time ~86MB download). */
+  /** Higher-quality on-device Kokoro voice. On by default; can be switched off. */
   betterVoice: boolean;
+  /**
+   * Marks that this profile has been through the "better voice is now the
+   * default" migration. Without it we can't tell a user who deliberately
+   * turned the voice off from one whose profile predates the default flip —
+   * both store `betterVoice: false`, and we'd keep re-enabling it on them.
+   */
+  voiceDefaultApplied?: boolean;
 }
 
-const DEFAULT_PROFILE: UserProfile = { nickname: '', birthday: '', tone: 'default', betterVoice: false };
+const DEFAULT_PROFILE: UserProfile = {
+  nickname: '',
+  birthday: '',
+  tone: 'default',
+  betterVoice: true,
+  voiceDefaultApplied: true,
+};
 
 export function loadProfile(): UserProfile {
   if (typeof window === 'undefined') return DEFAULT_PROFILE;
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return DEFAULT_PROFILE;
-    return { ...DEFAULT_PROFILE, ...(JSON.parse(raw) as Partial<UserProfile>) };
+    const saved = JSON.parse(raw) as Partial<UserProfile>;
+    const profile = { ...DEFAULT_PROFILE, ...saved };
+    // Profiles saved before the flip carry an explicit `betterVoice: false`
+    // that only meant "the old default" — upgrade them once, then respect
+    // whatever the user chooses from here on.
+    if (!saved.voiceDefaultApplied) {
+      profile.betterVoice = true;
+      profile.voiceDefaultApplied = true;
+    }
+    return profile;
   } catch {
     return DEFAULT_PROFILE;
   }

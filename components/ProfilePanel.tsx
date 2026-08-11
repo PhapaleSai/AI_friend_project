@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import type { UserProfile } from '@/lib/profile';
 import { TONE_LABELS } from '@/lib/profile';
 import { loadKokoro, isKokoroReady, isKokoroSupported } from '@/lib/kokoro';
@@ -24,9 +24,23 @@ export default function ProfilePanel({
   const [betterVoice, setBetterVoice] = useState(profile.betterVoice);
   const [voiceProgress, setVoiceProgress] = useState<number | null>(null);
   const [voiceError, setVoiceError] = useState('');
+  const [voiceReady, setVoiceReady] = useState(isKokoroReady());
+
+  // The download is usually kicked off in the background at app start, so this
+  // panel has no callback to hook into — poll until the model is resident.
+  useEffect(() => {
+    if (voiceReady || !betterVoice) return;
+    const id = setInterval(() => {
+      if (isKokoroReady()) setVoiceReady(true);
+    }, 1000);
+    return () => clearInterval(id);
+  }, [voiceReady, betterVoice]);
 
   const handleSave = () => {
-    onSave({ nickname: nickname.trim(), birthday, tone, betterVoice });
+    // voiceDefaultApplied must survive the save, otherwise loadProfile would
+    // treat a deliberate opt-out as a pre-migration profile and switch the
+    // voice back on next time.
+    onSave({ nickname: nickname.trim(), birthday, tone, betterVoice, voiceDefaultApplied: true });
     onClose();
   };
 
@@ -39,6 +53,7 @@ export default function ProfilePanel({
       setVoiceProgress(0);
       try {
         await loadKokoro((pct) => setVoiceProgress(pct));
+        setVoiceReady(true);
       } catch {
         setVoiceError('Download failed — still using the standard voice.');
         setBetterVoice(false);
@@ -123,13 +138,15 @@ export default function ProfilePanel({
               }}
             >
               <div className="flex-1 min-w-0">
-                <p className="text-[13px] font-semibold text-white leading-tight">Better voice</p>
-                <p className="text-[11px] text-slate-400 leading-snug mt-0.5">
+                <p className="text-[0.8125rem] font-semibold text-white leading-tight">Better voice</p>
+                <p className="text-[0.6875rem] text-slate-400 leading-snug mt-0.5">
                   {voiceProgress !== null
                     ? `Downloading voice… ${voiceProgress}%`
+                    : betterVoice && voiceReady
+                    ? 'Natural on-device voice — active'
                     : betterVoice
-                    ? 'Natural on-device voice'
-                    : 'One-time ~86MB download, then works offline'}
+                    ? 'Getting ready in the background — standard voice until then'
+                    : 'Natural on-device voice. One-time ~86MB download, then offline'}
                 </p>
               </div>
               {/* Switch */}
@@ -139,7 +156,8 @@ export default function ProfilePanel({
               >
                 <span
                   className="absolute top-0.5 w-5 h-5 rounded-full bg-white transition-all duration-200"
-                  style={{ left: betterVoice ? 18 : 2 }}
+                  // rem so the knob tracks the switch when the root size scales
+                  style={{ left: betterVoice ? '1.125rem' : '0.125rem' }}
                 />
               </span>
             </button>
@@ -148,7 +166,7 @@ export default function ProfilePanel({
                 <div className="h-full rounded-full transition-all duration-200" style={{ width: `${voiceProgress}%`, background: accentColor }} />
               </div>
             )}
-            {voiceError && <p className="text-[11px] text-amber-400 mb-4">{voiceError}</p>}
+            {voiceError && <p className="text-[0.6875rem] text-amber-400 mb-4">{voiceError}</p>}
             {voiceProgress === null && !voiceError && <div className="mb-4" />}
           </>
         )}

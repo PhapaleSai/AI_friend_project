@@ -7,9 +7,10 @@ import type { VoiceSettings } from './characters';
  * the browser (ONNX via WebGPU/WASM). Zero server cost, works offline once
  * cached, and sounds markedly better than the Web Speech API.
  *
- * The tradeoff is a one-time model download (~86MB at q8), so this is strictly
- * opt-in: browser speech synthesis stays the default and every failure path
- * here falls back to it rather than leaving the user with no voice at all.
+ * The tradeoff is a one-time model download (~86MB at q8). It's on by default
+ * but never blocking: replies are spoken with browser synthesis until the
+ * model is resident, and every failure path falls back to it rather than
+ * leaving the user with no voice at all.
  */
 
 const MODEL_ID = 'onnx-community/Kokoro-82M-v1.0-ONNX';
@@ -24,6 +25,7 @@ export type KokoroStatus = 'idle' | 'loading' | 'ready' | 'unsupported' | 'error
 type KokoroModel = any;
 
 let modelPromise: Promise<KokoroModel> | null = null;
+let modelReady = false;
 let currentAudio: HTMLAudioElement | null = null;
 let currentUrl: string | null = null;
 
@@ -51,7 +53,7 @@ export function loadKokoro(onProgress?: (pct: number) => void): Promise<KokoroMo
   modelPromise = (async () => {
     const { KokoroTTS } = await import('kokoro-js');
     const device = await pickDevice();
-    return KokoroTTS.from_pretrained(MODEL_ID, {
+    const tts = await KokoroTTS.from_pretrained(MODEL_ID, {
       // q8 keeps the download ~86MB; fp32 would be ~330MB, far too heavy on phones.
       dtype: 'q8',
       device,
@@ -62,6 +64,8 @@ export function loadKokoro(onProgress?: (pct: number) => void): Promise<KokoroMo
       },
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } as any);
+    modelReady = true;
+    return tts;
   })().catch((err) => {
     // Reset so a later attempt can retry instead of being stuck on a rejection.
     modelPromise = null;
@@ -71,9 +75,24 @@ export function loadKokoro(onProgress?: (pct: number) => void): Promise<KokoroMo
   return modelPromise;
 }
 
-/** True once the model is downloaded and resident — used to skip the loading UI. */
+/**
+ * Starts the download in the background if it hasn't begun, without making the
+ * caller wait on it. Used to warm the model up while the user is still typing
+ * so the first spoken reply lands on the good voice.
+ */
+export function prefetchKokoro(): void {
+  if (modelPromise || !isKokoroSupported()) return;
+  loadKokoro().catch(() => { /* speech falls back to the browser voice */ });
+}
+
+/** True once the model is downloaded and resident — false while still loading. */
 export function isKokoroReady(): boolean {
-  return modelPromise !== null;
+  return modelReady;
+}
+
+/** True once a download has been started (in flight or finished). */
+export function isKokoroLoading(): boolean {
+  return modelPromise !== null && !modelReady;
 }
 
 export function stopKokoro(): void {
@@ -98,6 +117,14 @@ export async function speakWithKokoro(
   callbacks?: { onStart?: () => void; onEnd?: () => void; onError?: (e: string) => void }
 ): Promise<boolean> {
   if (!isKokoroSupported()) return false;
+
+  // Don't hold a reply hostage to an 86MB download: start it in the background
+  // and let this turn be spoken by the browser voice. Subsequent replies pick
+  // Kokoro up automatically once it's resident.
+  if (!isKokoroReady()) {
+    prefetchKokoro();
+    return false;
+  }
 
   try {
     stopKokoro();

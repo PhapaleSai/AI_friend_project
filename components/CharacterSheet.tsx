@@ -74,12 +74,12 @@ export default function CharacterSheet({
 
                 <div className="flex-1 min-w-0">
                   <p
-                    className="text-[16px] font-semibold leading-tight truncate"
+                    className="text-[1.0000rem] font-semibold leading-tight truncate"
                     style={{ color: isActive ? c.theme.primary : '#e2e8f0' }}
                   >
                     {c.name}
                   </p>
-                  <p className="text-[13px] text-slate-500 truncate">{c.title}</p>
+                  <p className="text-[0.8125rem] text-slate-500 truncate">{c.title}</p>
                 </div>
 
                 {isActive && (
@@ -106,7 +106,7 @@ export default function CharacterSheet({
 
         <button
           onClick={() => { onCreateNew(); onClose(); }}
-          className="w-full mt-2 py-3.5 rounded-2xl flex items-center justify-center gap-2 text-[15px] font-semibold text-slate-300 transition-all duration-150 active:scale-95 focus:outline-none"
+          className="w-full mt-2 py-3.5 rounded-2xl flex items-center justify-center gap-2 text-[0.9375rem] font-semibold text-slate-300 transition-all duration-150 active:scale-95 focus:outline-none"
           style={{ background: 'rgba(255,255,255,0.05)', border: '1px dashed rgba(255,255,255,0.18)' }}
         >
           <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor">

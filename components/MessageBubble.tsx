@@ -83,8 +83,8 @@ function YouTubeChip({ url }: { url: string }) {
         </svg>
       </div>
       <div className="overflow-hidden">
-        <p className="text-[12px] lg:text-[11px] text-red-300 font-semibold uppercase tracking-wide leading-none mb-0.5">YouTube</p>
-        <p className="text-[13.5px] lg:text-[12px] text-white font-medium leading-tight truncate" style={{ maxWidth: 200 }}>
+        <p className="text-[0.7500rem] lg:text-[0.6875rem] text-red-300 font-semibold uppercase tracking-wide leading-none mb-0.5">YouTube</p>
+        <p className="text-[0.8438rem] lg:text-[0.7500rem] text-white font-medium leading-tight truncate" style={{ maxWidth: 200 }}>
           {label}
         </p>
       </div>
@@ -118,10 +118,10 @@ function ArticleChip({ title, url, source }: { title: string; url: string; sourc
         </svg>
       </div>
       <div className="overflow-hidden">
-        <p className="text-[12px] lg:text-[11px] text-blue-300 font-semibold uppercase tracking-wide leading-none mb-0.5">
+        <p className="text-[0.7500rem] lg:text-[0.6875rem] text-blue-300 font-semibold uppercase tracking-wide leading-none mb-0.5">
           {source || 'Article'}
         </p>
-        <p className="text-[13.5px] lg:text-[12px] text-white font-medium leading-tight truncate" style={{ maxWidth: 220 }}>
+        <p className="text-[0.8438rem] lg:text-[0.7500rem] text-white font-medium leading-tight truncate" style={{ maxWidth: 220 }}>
           {title}
         </p>
       </div>
@@ -225,7 +225,7 @@ function VoiceNoteRow({ audioUrl, color }: { audioUrl: string; color: string }) 
         ))}
       </div>
       <audio controls src={audioUrl} style={{ height: 28, maxWidth: 180 }} className="flex-1" />
-      <span className="text-[10px] text-white/60 flex-shrink-0" style={{ color }}>🎤</span>
+      <span className="text-[0.6250rem] text-white/60 flex-shrink-0" style={{ color }}>🎤</span>
     </div>
   );
 }
@@ -236,7 +236,7 @@ function ReplayVoiceButton({ isSpeaking, onToggle, color }: { isSpeaking: boolea
       onClick={onToggle}
       // self-start stops the pill stretching to the full bubble width — its
       // parent is a flex column, which would otherwise make it a long bar.
-      className="self-start flex items-center gap-1.5 mt-1.5 px-2.5 py-1.5 lg:px-2 lg:py-1 rounded-full text-[12px] lg:text-[10px] font-medium transition-all duration-200 focus:outline-none"
+      className="self-start flex items-center gap-1.5 mt-1.5 px-2.5 py-1.5 lg:px-2 lg:py-1 rounded-full text-[0.7500rem] lg:text-[0.6250rem] font-medium transition-all duration-200 focus:outline-none"
       style={{
         background: isSpeaking ? `${color}22` : 'rgba(255,255,255,0.05)',
         border: `1px solid ${isSpeaking ? color + '50' : 'rgba(255,255,255,0.08)'}`,
@@ -301,7 +301,7 @@ function EmailDraftCard({ draft, color }: { draft: NonNullable<Message['emailDra
   return (
     <div className="mt-2.5 p-3 rounded-xl flex flex-col gap-2"
       style={{ background: 'rgba(255,255,255,0.05)', border: `1px solid ${color}30`, maxWidth: 280 }}>
-      <p className="text-[10px] font-semibold uppercase tracking-wide" style={{ color }}>Email draft — review before sending</p>
+      <p className="text-[0.6250rem] font-semibold uppercase tracking-wide" style={{ color }}>Email draft — review before sending</p>
 
       <input
         value={to}
@@ -325,8 +325,8 @@ function EmailDraftCard({ draft, color }: { draft: NonNullable<Message['emailDra
         style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)' }}
       />
 
-      {status === 'error' && <p className="text-[11px] text-red-400">{error}</p>}
-      {!isValidTo && to.length > 0 && <p className="text-[11px] text-amber-400">Enter a valid email address.</p>}
+      {status === 'error' && <p className="text-[0.6875rem] text-red-400">{error}</p>}
+      {!isValidTo && to.length > 0 && <p className="text-[0.6875rem] text-amber-400">Enter a valid email address.</p>}
 
       <button
         onClick={handleSend}
@@ -348,7 +348,7 @@ export default function MessageBubble({ message, character, showAvatar = true, i
     return (
       <div className="msg-user flex justify-end mb-2 px-4">
         <div
-          className="selectable max-w-[72%] rounded-2xl rounded-tr-md px-4 py-2.5 text-[16px] lg:text-[14px] leading-[1.6] text-white"
+          className="selectable max-w-[72%] rounded-2xl rounded-tr-md px-4 py-2.5 text-[1.0000rem] lg:text-[0.8750rem] leading-[1.6] text-white"
           style={{
             background: `linear-gradient(135deg, ${theme.primary}cc, ${theme.secondary}99)`,
             boxShadow: `0 2px 12px ${theme.primary}30`,
@@ -380,12 +380,12 @@ export default function MessageBubble({ message, character, showAvatar = true, i
 
       <div className="max-w-[78%] flex flex-col gap-0.5">
         {showAvatar && (
-          <span className="text-[11.5px] lg:text-[10px] font-semibold ml-1 mb-0.5" style={{ color: theme.nameColor }}>
+          <span className="text-[0.7188rem] lg:text-[0.6250rem] font-semibold ml-1 mb-0.5" style={{ color: theme.nameColor }}>
             {character.name}
           </span>
         )}
         <div
-          className="selectable rounded-2xl rounded-bl-md px-4 py-2.5 text-[16px] lg:text-[14px] leading-[1.65] text-slate-100"
+          className="selectable rounded-2xl rounded-bl-md px-4 py-2.5 text-[1.0000rem] lg:text-[0.8750rem] leading-[1.65] text-slate-100"
           style={{
             background: 'rgba(255,255,255,0.07)',
             border: `1px solid ${theme.primary}18`,

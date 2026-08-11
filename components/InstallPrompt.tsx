@@ -91,7 +91,7 @@ export default function InstallPrompt() {
         <p className="text-xs font-semibold text-white leading-tight">
           {showIosHelp ? 'Install as an app' : 'Install Friend AI'}
         </p>
-        <p className="text-[11px] text-slate-400 leading-snug mt-0.5">
+        <p className="text-[0.6875rem] text-slate-400 leading-snug mt-0.5">
           {showIosHelp
             ? 'Tap Share, then "Add to Home Screen"'
             : 'Opens fullscreen, works offline'}
