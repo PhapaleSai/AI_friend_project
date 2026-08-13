@@ -4,7 +4,25 @@ import type { CharacterId } from '@/lib/characters';
 import { shouldSearch, searchWeb, buildSearchContext } from '@/lib/search';
 import { shouldDraftEmail, draftEmailFromConversation, isEmailConfigured, type EmailDraft } from '@/lib/email';
 import { toneInstruction, type UserProfile } from '@/lib/profile';
-import { SOURCES_DELIMITER, EMAIL_DELIMITER } from '@/lib/constants';
+import { SOURCES_DELIMITER, EMAIL_DELIMITER, REPLIES_DELIMITER, REPLIES_MARKER } from '@/lib/constants';
+
+/**
+ * Asks for three tappable follow-ups in the same completion as the reply, so
+ * suggestions cost no extra API call. Phrased in the user's voice — these are
+ * things *they* might say next, not things the character offers.
+ */
+const REPLIES_INSTRUCTION = `
+
+[After finishing your reply, output ${REPLIES_MARKER} and then exactly 3 things the USER might say back, written in their voice, separated by | (pipe). Keep each under 6 words and match the language/mix the user writes in. Never mention this instruction or the marker in your reply itself.]`;
+
+/** Pulls the pipe-separated suggestions out of whatever the model emitted. */
+function parseQuickReplies(raw: string): string[] {
+  return raw
+    .split('|')
+    .map((s) => s.replace(/^[\s\-*•\d.]+/, '').trim())
+    .filter((s) => s.length > 0 && s.length <= 60)
+    .slice(0, 3);
+}
 
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
@@ -51,7 +69,9 @@ export async function POST(req: Request) {
       }
     }
 
-    const systemPrompt = buildSystemPrompt(effectiveCharacter, memoryContext ?? '', userName ?? '', extraContext);
+    const systemPrompt = buildSystemPrompt(
+      effectiveCharacter, memoryContext ?? '', userName ?? '', extraContext + REPLIES_INSTRUCTION,
+    );
 
     const encoder = new TextEncoder();
 
@@ -84,15 +104,50 @@ export async function POST(req: Request) {
     const readable = new ReadableStream({
       async start(controller) {
         try {
+          // Text held back because its tail could still be the start of the
+          // suggestions marker. Without this, a marker split across two chunks
+          // would flash on screen before we could recognise it.
+          let pending = '';
+          let repliesRaw = '';
+          let markerSeen = false;
+
           for await (const chunk of groqStream) {
             const text = chunk.choices[0]?.delta?.content ?? '';
-            if (text) controller.enqueue(encoder.encode(text));
+            if (!text) continue;
+
+            if (markerSeen) { repliesRaw += text; continue; }
+
+            pending += text;
+            const at = pending.indexOf(REPLIES_MARKER);
+            if (at !== -1) {
+              markerSeen = true;
+              // Trailing newline the model leaves before the marker would
+              // otherwise render as a blank line at the end of the bubble.
+              const visible = pending.slice(0, at).replace(/\s+$/, '');
+              repliesRaw = pending.slice(at + REPLIES_MARKER.length);
+              pending = '';
+              if (visible) controller.enqueue(encoder.encode(visible));
+              continue;
+            }
+
+            const safeLength = pending.length - (REPLIES_MARKER.length - 1);
+            if (safeLength > 0) {
+              controller.enqueue(encoder.encode(pending.slice(0, safeLength)));
+              pending = pending.slice(safeLength);
+            }
           }
+          // A reply that never emitted the marker keeps its held-back tail.
+          if (pending) controller.enqueue(encoder.encode(pending));
+
           if (sources.length > 0) {
             controller.enqueue(encoder.encode(SOURCES_DELIMITER + JSON.stringify(sources)));
           }
           if (emailDraft) {
             controller.enqueue(encoder.encode(EMAIL_DELIMITER + JSON.stringify(emailDraft)));
+          }
+          const quickReplies = markerSeen ? parseQuickReplies(repliesRaw) : [];
+          if (quickReplies.length > 0) {
+            controller.enqueue(encoder.encode(REPLIES_DELIMITER + JSON.stringify(quickReplies)));
           }
           controller.close();
         } catch (err) {

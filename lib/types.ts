@@ -25,6 +25,8 @@ export interface Message {
   audioUrl?: string;
   sources?: ArticleSource[];
   emailDraft?: EmailDraft;
+  /** Tappable follow-ups, in the user's voice. Only shown under the latest reply. */
+  quickReplies?: string[];
   /** ISO timestamp. Optional — messages saved before this field existed won't have it. */
   createdAt?: string;
 }

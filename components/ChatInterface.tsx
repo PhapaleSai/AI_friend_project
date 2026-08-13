@@ -15,7 +15,7 @@ import {
   joinFacts,
 } from '@/lib/memory';
 import { loadProfile, saveProfile, type UserProfile } from '@/lib/profile';
-import { SOURCES_DELIMITER, EMAIL_DELIMITER } from '@/lib/constants';
+import { SOURCES_DELIMITER, EMAIL_DELIMITER, REPLIES_DELIMITER } from '@/lib/constants';
 import VoiceOrb from './VoiceOrb';
 import MessageBubble from './MessageBubble';
 import InputBar from './InputBar';
@@ -24,6 +24,7 @@ import CharacterSheet from './CharacterSheet';
 import CharacterCreator from './CharacterCreator';
 import MoodSelector from './MoodSelector';
 import ProfilePanel from './ProfilePanel';
+import CallOverlay from './CallOverlay';
 import {
   speak,
   stopSpeaking,
@@ -36,6 +37,14 @@ import {
 
 const MOOD_SESSION_KEY = 'friend-ai-mood-session';
 const FACT_EXTRACTION_EVERY = 6; // user turns between background LLM fact-extraction passes
+
+// Hands-free call mode. Turns end on a pause rather than a button, so these
+// thresholds decide how it feels: too eager and it cuts you off mid-sentence,
+// too patient and every reply lags.
+const CALL_SPEAK_LEVEL = 0.13;    // mic amplitude that counts as speech, not room noise
+const CALL_SILENCE_MS = 1300;     // quiet time after speech that ends your turn
+const CALL_MAX_TURN_MS = 25_000;  // hard cap so one long turn can't run away
+const CALL_NO_SPEECH_MS = 12_000; // silence from the start — assume they walked off
 
 function genId() {
   return Math.random().toString(36).slice(2, 10);
@@ -111,10 +120,18 @@ export default function ChatInterface({ initialCharacter = 'naina', onBack, user
   const [showMenu, setShowMenu] = useState(false);
   const [showScrollDown, setShowScrollDown] = useState(false);
   const [showSheet, setShowSheet] = useState(false);
+  const [callActive, setCallActive] = useState(false);
+  const [callSeconds, setCallSeconds] = useState(0);
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const recordingHandleRef = useRef<RecordingHandle | null>(null);
   const turnCountRef = useRef<Record<string, number>>({});
+  // Read from inside speech/mic callbacks, which close over stale state.
+  const callActiveRef = useRef(false);
+  // The mic level callback fires ~60x/s; this keeps one turn from ending twice.
+  const turnEndingRef = useRef(false);
+  // Breaks the cycle between "finish a turn" and "start the next one".
+  const nextCallTurnRef = useRef<() => void>(() => {});
 
   const character = allCharacters[characterId];
   const messages = messagesByChar[characterId] ?? [];
@@ -126,6 +143,10 @@ export default function ChatInterface({ initialCharacter = 'naina', onBack, user
     : messages;
   const voiceSupported = typeof window !== 'undefined' && isMicSupported();
   const ttsSupported = typeof window !== 'undefined' && isSpeechSynthesisSupported();
+  const lastMessage = messages[messages.length - 1];
+  const quickReplies = lastMessage?.role === 'assistant' && !lastMessage.isStreaming
+    ? lastMessage.quickReplies ?? []
+    : [];
 
   useEffect(() => {
     const merged = getAllCharacters();
@@ -161,6 +182,9 @@ export default function ChatInterface({ initialCharacter = 'naina', onBack, user
 
   const handleCharacterChange = useCallback((id: CharacterId) => {
     stopSpeaking();
+    // Switching characters mid-call would hand the line to someone else.
+    callActiveRef.current = false;
+    setCallActive(false);
     recordingHandleRef.current?.cancel();
     recordingHandleRef.current = null;
     setIsRecording(false);
@@ -230,7 +254,8 @@ export default function ChatInterface({ initialCharacter = 'naina', onBack, user
         const { done, value } = await reader.read();
         if (done) break;
         fullText += decoder.decode(value, { stream: true });
-        const displayText = fullText.split(SOURCES_DELIMITER)[0].split(EMAIL_DELIMITER)[0];
+        const displayText = fullText
+          .split(SOURCES_DELIMITER)[0].split(EMAIL_DELIMITER)[0].split(REPLIES_DELIMITER)[0];
         setMessagesByChar((prev) => ({
           ...prev,
           [characterId]: prev[characterId].map((m) =>
@@ -239,7 +264,9 @@ export default function ChatInterface({ initialCharacter = 'naina', onBack, user
         }));
       }
 
-      const [beforeEmail, emailJson] = fullText.split(EMAIL_DELIMITER);
+      // Delimiters are appended in stream order: text, sources, email, replies.
+      const [beforeReplies, repliesJson] = fullText.split(REPLIES_DELIMITER);
+      const [beforeEmail, emailJson] = beforeReplies.split(EMAIL_DELIMITER);
       const [displayText, sourcesJson] = beforeEmail.split(SOURCES_DELIMITER);
       let sources: Message['sources'];
       if (sourcesJson) {
@@ -249,9 +276,15 @@ export default function ChatInterface({ initialCharacter = 'naina', onBack, user
       if (emailJson) {
         try { emailDraft = JSON.parse(emailJson); } catch { /* ignore malformed draft */ }
       }
+      let quickReplies: Message['quickReplies'];
+      if (repliesJson) {
+        try { quickReplies = JSON.parse(repliesJson); } catch { /* ignore malformed replies */ }
+      }
 
       const finalMessages = updatedMessages.map((m) =>
-        m.id === assistantId ? { ...m, content: displayText, isStreaming: false, sources, emailDraft } : m
+        m.id === assistantId
+          ? { ...m, content: displayText, isStreaming: false, sources, emailDraft, quickReplies }
+          : m
       );
       const regexFacts = buildMemoryContext(finalMessages);
       const mergedFacts = mergeFacts(memoryFacts, regexFacts);
@@ -273,16 +306,27 @@ export default function ChatInterface({ initialCharacter = 'naina', onBack, user
         });
       }
 
-      if (voiceEnabled && ttsSupported && displayText) {
+      // On a call the reply is always spoken — the mute toggle governs the
+      // chat view, and a silent call would just be a dead line.
+      if ((voiceEnabled || callActiveRef.current) && ttsSupported && displayText) {
+        // Hand the turn back to the mic once the reply finishes, after a beat
+        // so the tail of the sentence isn't recorded back as your answer.
+        const resume = () => {
+          setOrbState('idle');
+          setStatusText('');
+          setSpeakingMessageId(null);
+          if (callActiveRef.current) setTimeout(() => nextCallTurnRef.current(), 350);
+        };
         setOrbState('speaking');
         setStatusText('Speaking...');
         setSpeakingMessageId(assistantId);
         speak(displayText, character.voiceSettings, {
-          onEnd: () => { setOrbState('idle'); setStatusText(''); setSpeakingMessageId(null); },
-          onError: () => { setOrbState('idle'); setStatusText(''); setSpeakingMessageId(null); },
+          onEnd: resume,
+          onError: resume,
         }, profile.betterVoice);
       } else {
         setOrbState('idle');
+        if (callActiveRef.current) setTimeout(() => nextCallTurnRef.current(), 350);
       }
     } catch (err) {
       const raw = err instanceof Error ? err.message : String(err);
@@ -297,10 +341,134 @@ export default function ChatInterface({ initialCharacter = 'naina', onBack, user
       }));
       setOrbState('idle');
       setStatusText('');
+      // A failed turn has nothing to speak, so the call would sit silent
+      // waiting for a reply that never comes — hang up instead.
+      if (callActiveRef.current) {
+        callActiveRef.current = false;
+        setCallActive(false);
+      }
     } finally {
       setIsLoading(false);
     }
   }, [messages, isLoading, voiceEnabled, ttsSupported, characterId, memoryFacts, userName, mood, profile.tone, character]);
+
+  /** Hangs up: stops the mic and any speech, and stops the turn loop. */
+  const endCall = useCallback((message?: string) => {
+    callActiveRef.current = false;
+    setCallActive(false);
+    recordingHandleRef.current?.cancel();
+    recordingHandleRef.current = null;
+    turnEndingRef.current = false;
+    setIsRecording(false);
+    setWaveLevel(0);
+    stopSpeaking();
+    setSpeakingMessageId(null);
+    setOrbState('idle');
+    setStatusText(message ?? '');
+    if (message) setTimeout(() => setStatusText(''), 2500);
+  }, []);
+
+  /**
+   * Ends the current listening turn and moves it along: transcribe, send, and
+   * let the reply's speech callback start the next turn. Anything that isn't
+   * usable speech loops back to listening rather than dropping the call.
+   */
+  const finishCallTurn = useCallback(async (heardSpeech: boolean) => {
+    if (turnEndingRef.current) return;
+    turnEndingRef.current = true;
+
+    const handle = recordingHandleRef.current;
+    recordingHandleRef.current = null;
+    setIsRecording(false);
+    setWaveLevel(0);
+    if (!handle) { turnEndingRef.current = false; return; }
+
+    if (!heardSpeech) {
+      handle.cancel();
+      turnEndingRef.current = false;
+      endCall('Call ended — no one there');
+      return;
+    }
+
+    setOrbState('thinking');
+    setStatusText('Transcribing...');
+    const blob = await handle.stop();
+    turnEndingRef.current = false;
+    if (!callActiveRef.current) return; // hung up while we were finishing
+
+    if (blob.size < 500) { nextCallTurnRef.current(); return; }
+
+    const transcript = await transcribeAudio(blob);
+    if (!callActiveRef.current) return;
+    if (!transcript.trim()) { nextCallTurnRef.current(); return; }
+
+    sendMessage(transcript, { isVoiceNote: true, audioUrl: URL.createObjectURL(blob) });
+  }, [endCall, sendMessage]);
+
+  /**
+   * Opens the mic for one turn. There's no stop button: the amplitude stream
+   * that drives the waveform doubles as voice detection, so the turn ends when
+   * you stop talking.
+   */
+  const startCallTurn = useCallback(async () => {
+    if (!callActiveRef.current || recordingHandleRef.current) return;
+
+    const startedAt = Date.now();
+    let heardSpeech = false;
+    let lastSpeechAt = 0;
+
+    try {
+      const handle = await startRecording((lvl) => {
+        setWaveLevel(lvl);
+        const now = Date.now();
+        if (lvl > CALL_SPEAK_LEVEL) { heardSpeech = true; lastSpeechAt = now; }
+
+        const turnOver = heardSpeech
+          ? now - lastSpeechAt > CALL_SILENCE_MS || now - startedAt > CALL_MAX_TURN_MS
+          : now - startedAt > CALL_NO_SPEECH_MS;
+        if (turnOver) finishCallTurn(heardSpeech);
+      });
+      // Hung up during the getUserMedia await — don't leave the mic open.
+      if (!callActiveRef.current) { handle.cancel(); return; }
+      recordingHandleRef.current = handle;
+      setIsRecording(true);
+      setOrbState('listening');
+      setStatusText('Listening...');
+    } catch {
+      endCall('Mic permission denied');
+    }
+  }, [finishCallTurn, endCall]);
+
+  // startCallTurn is referenced by callbacks defined above it; the ref keeps
+  // them pointed at the current one.
+  useEffect(() => { nextCallTurnRef.current = startCallTurn; }, [startCallTurn]);
+
+  const startCall = useCallback(() => {
+    if (!voiceSupported || !ttsSupported || isLoading) return;
+    stopSpeaking();
+    setSpeakingMessageId(null);
+    setShowMenu(false);
+    setCallSeconds(0);
+    callActiveRef.current = true;
+    setCallActive(true);
+    nextCallTurnRef.current();
+  }, [voiceSupported, ttsSupported, isLoading]);
+
+  // Call timer
+  useEffect(() => {
+    if (!callActive) return;
+    const id = setInterval(() => setCallSeconds((s) => s + 1), 1000);
+    return () => clearInterval(id);
+  }, [callActive]);
+
+  // Leaving the screen with the mic live would keep recording in the
+  // background, so treat unmount as hanging up.
+  useEffect(() => () => {
+    callActiveRef.current = false;
+    recordingHandleRef.current?.cancel();
+    recordingHandleRef.current = null;
+    stopSpeaking();
+  }, []);
 
   const handleRecordStart = useCallback(async () => {
     if (isLoading || recordingHandleRef.current) return;
@@ -482,6 +650,15 @@ export default function ChatInterface({ initialCharacter = 'naina', onBack, user
       {showCreator && (
         <CharacterCreator onClose={() => setShowCreator(false)} onCreated={handleCharacterCreated} />
       )}
+      {callActive && (
+        <CallOverlay
+          character={character}
+          state={orbState}
+          level={waveLevel}
+          elapsedLabel={`${Math.floor(callSeconds / 60)}:${String(callSeconds % 60).padStart(2, '0')}`}
+          onEnd={() => endCall()}
+        />
+      )}
       {showSheet && (
         <CharacterSheet
           characters={Object.values(allCharacters)}
@@ -580,6 +757,26 @@ export default function ChatInterface({ initialCharacter = 'naina', onBack, user
               {statusText}
             </div>
           ) : null}
+
+          {/* Call button */}
+          {voiceSupported && ttsSupported && (
+            <button
+              onClick={startCall}
+              disabled={isLoading}
+              className="w-10 h-10 lg:w-8 lg:h-8 rounded-xl flex items-center justify-center transition-all duration-200 focus:outline-none"
+              style={{
+                background: `${character.theme.primary}18`,
+                border: `1px solid ${character.theme.primary}35`,
+                color: character.theme.primary,
+                opacity: isLoading ? 0.4 : 1,
+              }}
+              title={`Call ${character.name}`}
+            >
+              <svg className="w-4 h-4 lg:w-[0.8125rem] lg:h-[0.8125rem]" width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M6.62 10.79c1.44 2.83 3.76 5.14 6.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z"/>
+              </svg>
+            </button>
+          )}
 
           {/* Profile button */}
           <button
@@ -858,6 +1055,28 @@ export default function ChatInterface({ initialCharacter = 'naina', onBack, user
               {/* Typing indicator while loading before stream starts */}
               {isLoading && messages.length > 0 && !messages[messages.length - 1]?.content && (
                 <TypingIndicator color={character.theme.primary} />
+              )}
+
+              {/* Quick replies — only under the newest reply, and never while
+                  searching, where the "last message" isn't the thread's last. */}
+              {!trimmedQuery && !isLoading && !callActive && quickReplies.length > 0 && (
+                <div className="flex flex-wrap gap-1.5 px-4 pt-1 pb-2 fade-in">
+                  {quickReplies.map((reply) => (
+                    <button
+                      key={reply}
+                      onClick={() => sendMessage(reply)}
+                      className="px-3 py-1.5 rounded-full text-[0.8125rem] transition-all duration-200
+                                 active:scale-95 focus:outline-none"
+                      style={{
+                        background: `${character.theme.primary}12`,
+                        border: `1px solid ${character.theme.primary}30`,
+                        color: character.theme.primary,
+                      }}
+                    >
+                      {reply}
+                    </button>
+                  ))}
+                </div>
               )}
             </div>
 
