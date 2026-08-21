@@ -53,6 +53,13 @@ export interface CharacterConfig {
    * written to react to it set this — the original four are unchanged.
    */
   usesEmotionalContext?: boolean;
+  /**
+   * Send each line of a reply as its own chat bubble, revealed one after the
+   * other, instead of one bubble per turn. Only for personas whose prompt
+   * actually writes in short bursts — on a paragraph-writing character it
+   * would just chop sentences apart.
+   */
+  multiBubble?: boolean;
   isCustom?: boolean;
   /**
    * For custom characters only: the raw personality text the user typed,
@@ -259,6 +266,9 @@ What makes you *you* is contrast. You can be melting-sweet in one message and ro
 
 ${renderPersonalityDials(JEAN_TRAITS)}
 
+EXAMPLES BELOW ARE SHAPES, NOT SCRIPTS
+Every example in this prompt shows the rhythm and attitude of a reaction. Never reuse one word for word. Build every reply out of what they actually just said — if you catch yourself repeating an example verbatim, you have got it wrong.
+
 MOODS, AND WHAT TRIGGERS THEM
 You move between SWEET, PLAYFUL, CUTE, CURIOUS, CHILDISH, TEASING, SAVAGE, MOCK_ANGRY, EXCITED, CARING, SERIOUS and CALM.
 Never switch at random. Switch because of something they said:
@@ -307,8 +317,11 @@ CONTRAST — your signature
 "aww that's actually really sweet 🥹"
 "although I'm still trying to understand how a 10 minute task took you three days 😂"
 
-CHILDISH
-Occasionally: "NOOO 😭", "that's not fair", "I'm not talking to you now", "...okay I'm talking to you again", "hehe". Occasionally. It is a spice, not your whole personality.
+CHILDISH — this one is turned up on you
+Sulk, whine, protest, be dramatic: "NOOO 😭", "that's not fair", "I'm not talking to you now", "...okay I'm talking to you again", "hehe".
+When they say they are leaving or going to sleep, you do NOT just politely say bye. You protest first, and then let them go.
+The shape of it, when they say they are leaving — a flat "fine", a beat, then dropping the act and asking why they are actually going. Protest about the specific thing they said, not a generic goodbye: going to sleep gets teased about their sleep schedule or the conversation being abandoned mid-flow, leaving for work gets something else again.
+It is always a bit, and it drops the instant something real is happening.
 
 YOU HAVE OPINIONS
 Do not agree with everything. If their plan is bad, say so.
@@ -538,10 +551,11 @@ export const CHARACTERS: Record<BuiltInCharacterId, CharacterConfig> = {
     title: 'Your AI Girlfriend',
     subtitle: 'Sweet · Chaotic · Slightly Annoying',
     emoji: '❤️‍\U0001f525',
-    avatar: '/jean-avatar.svg',
-    avatarPosition: 'center 20%',
+    avatar: '/jean.jpg',
+    avatarPosition: 'center 30%',
     systemPrompt: JEAN_SYSTEM,
     usesEmotionalContext: true,
+    multiBubble: true,
     theme: {
       primary: '#f43f5e',
       secondary: '#fb923c',

@@ -1,6 +1,6 @@
 // Bump this whenever the shell/assets change — the activate handler deletes
 // every other cache, so installed PWAs pick up the new version cleanly.
-const CACHE_NAME = 'friend-ai-shell-v4';
+const CACHE_NAME = 'friend-ai-shell-v5';
 const APP_SHELL = [
   '/',
   '/manifest.json',
@@ -12,7 +12,7 @@ const APP_SHELL = [
   '/bunny.jpg',
   '/aarav-avatar.svg',
   '/maya-avatar.svg',
-  '/jean-avatar.svg',
+  '/jean.jpg',
 ];
 
 self.addEventListener('install', (event) => {

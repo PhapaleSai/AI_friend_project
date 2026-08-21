@@ -16,6 +16,7 @@ import {
 } from '@/lib/memory';
 import { loadProfile, saveProfile, type UserProfile } from '@/lib/profile';
 import { SOURCES_DELIMITER, EMAIL_DELIMITER, REPLIES_DELIMITER } from '@/lib/constants';
+import { splitIntoBubbles, bubbleDelay } from '@/lib/bubbles';
 import VoiceOrb from './VoiceOrb';
 import MessageBubble from './MessageBubble';
 import InputBar from './InputBar';
@@ -122,6 +123,8 @@ export default function ChatInterface({ initialCharacter = 'naina', onBack, user
   const [showSheet, setShowSheet] = useState(false);
   const [callActive, setCallActive] = useState(false);
   const [callSeconds, setCallSeconds] = useState(0);
+  // True between the first and last bubble of a multi-bubble reply.
+  const [isRevealing, setIsRevealing] = useState(false);
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const recordingHandleRef = useRef<RecordingHandle | null>(null);
@@ -201,6 +204,7 @@ export default function ChatInterface({ initialCharacter = 'naina', onBack, user
     if (!text.trim() || isLoading || !character) return;
     stopSpeaking();
     setSpeakingMessageId(null);
+    const multiBubble = !!character.multiBubble;
 
     const userMsg: Message = {
       id: genId(), role: 'user', content: text.trim(),
@@ -254,6 +258,7 @@ export default function ChatInterface({ initialCharacter = 'naina', onBack, user
         const { done, value } = await reader.read();
         if (done) break;
         fullText += decoder.decode(value, { stream: true });
+        if (multiBubble) continue; // painted as bubbles once the stream ends
         const displayText = fullText
           .split(SOURCES_DELIMITER)[0].split(EMAIL_DELIMITER)[0].split(REPLIES_DELIMITER)[0];
         setMessagesByChar((prev) => ({
@@ -281,33 +286,31 @@ export default function ChatInterface({ initialCharacter = 'naina', onBack, user
         try { quickReplies = JSON.parse(repliesJson); } catch { /* ignore malformed replies */ }
       }
 
-      const finalMessages = updatedMessages.map((m) =>
-        m.id === assistantId
-          ? { ...m, content: displayText, isStreaming: false, sources, emailDraft, quickReplies }
-          : m
-      );
+      // Real texting arrives as a few short messages, not one block, so for
+      // personas that write that way each line becomes its own bubble.
+      const segments = multiBubble ? splitIntoBubbles(displayText) : [displayText];
+      const bubbles: Message[] = segments.map((content, i) => ({
+        id: i === 0 ? assistantId : genId(),
+        role: 'assistant' as const,
+        content,
+        isStreaming: false,
+        createdAt: new Date().toISOString(),
+        // Source cards, the email draft and the reply chips belong under the
+        // last bubble — hanging them off the first would put them mid-reply.
+        ...(i === segments.length - 1 ? { sources, emailDraft, quickReplies } : {}),
+      }));
+
+      const finalMessages = [...messages, userMsg, ...bubbles];
       const regexFacts = buildMemoryContext(finalMessages);
       const mergedFacts = mergeFacts(memoryFacts, regexFacts);
-      setMessagesByChar((prev) => ({ ...prev, [characterId]: finalMessages }));
       setMemoryByChar((prev) => ({ ...prev, [characterId]: mergedFacts }));
-      saveConversation(characterId, finalMessages, mergedFacts);
-
-      // Background AI fact extraction every few turns — non-blocking.
-      const turns = (turnCountRef.current[characterId] ?? 0) + 1;
-      turnCountRef.current[characterId] = turns;
-      if (turns % FACT_EXTRACTION_EVERY === 0) {
-        extractFactsWithLLM(finalMessages).then((llmFacts) => {
-          if (llmFacts.length === 0) return;
-          setMemoryByChar((prev) => {
-            const merged = mergeFacts(prev[characterId] ?? [], llmFacts);
-            saveConversation(characterId, finalMessages, merged);
-            return { ...prev, [characterId]: merged };
-          });
-        });
-      }
+      // First bubble lands immediately; the rest follow below.
+      setMessagesByChar((prev) => ({ ...prev, [characterId]: [...messages, userMsg, bubbles[0]] }));
 
       // On a call the reply is always spoken — the mute toggle governs the
-      // chat view, and a silent call would just be a dead line.
+      // chat view, and a silent call would just be a dead line. Speech covers
+      // the whole reply and starts now, so it runs alongside the bubbles
+      // rather than waiting for the last one to land.
       if ((voiceEnabled || callActiveRef.current) && ttsSupported && displayText) {
         // Hand the turn back to the mic once the reply finishes, after a beat
         // so the tail of the sentence isn't recorded back as your answer.
@@ -327,6 +330,36 @@ export default function ChatInterface({ initialCharacter = 'naina', onBack, user
       } else {
         setOrbState('idle');
         if (callActiveRef.current) setTimeout(() => nextCallTurnRef.current(), 350);
+      }
+
+      // Remaining bubbles arrive one at a time, with the typing dots in
+      // between, the way a person sending three quick texts looks.
+      if (bubbles.length > 1) {
+        setIsRevealing(true);
+        for (let i = 1; i < bubbles.length; i++) {
+          await new Promise((resolve) => setTimeout(resolve, bubbleDelay(bubbles[i].content)));
+          setMessagesByChar((prev) => ({
+            ...prev,
+            [characterId]: [...messages, userMsg, ...bubbles.slice(0, i + 1)],
+          }));
+        }
+        setIsRevealing(false);
+      }
+
+      saveConversation(characterId, finalMessages, mergedFacts);
+
+      // Background AI fact extraction every few turns — non-blocking.
+      const turns = (turnCountRef.current[characterId] ?? 0) + 1;
+      turnCountRef.current[characterId] = turns;
+      if (turns % FACT_EXTRACTION_EVERY === 0) {
+        extractFactsWithLLM(finalMessages).then((llmFacts) => {
+          if (llmFacts.length === 0) return;
+          setMemoryByChar((prev) => {
+            const merged = mergeFacts(prev[characterId] ?? [], llmFacts);
+            saveConversation(characterId, finalMessages, merged);
+            return { ...prev, [characterId]: merged };
+          });
+        });
       }
     } catch (err) {
       const raw = err instanceof Error ? err.message : String(err);
@@ -1053,13 +1086,13 @@ export default function ChatInterface({ initialCharacter = 'naina', onBack, user
                 );
               })}
               {/* Typing indicator while loading before stream starts */}
-              {isLoading && messages.length > 0 && !messages[messages.length - 1]?.content && (
+              {((isLoading && messages.length > 0 && !messages[messages.length - 1]?.content) || isRevealing) && (
                 <TypingIndicator color={character.theme.primary} />
               )}
 
               {/* Quick replies — only under the newest reply, and never while
                   searching, where the "last message" isn't the thread's last. */}
-              {!trimmedQuery && !isLoading && !callActive && quickReplies.length > 0 && (
+              {!trimmedQuery && !isLoading && !isRevealing && !callActive && quickReplies.length > 0 && (
                 <div className="flex flex-wrap gap-1.5 px-4 pt-1 pb-2 fade-in">
                   {quickReplies.map((reply) => (
                     <button
