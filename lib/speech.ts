@@ -100,39 +100,48 @@ function findBestVoice(settings: VoiceSettings): SpeechSynthesisVoice | null {
   return best;
 }
 
-// Cache the resolved voice per gender so we don't re-scan on every message
-const voiceCache: Partial<Record<'female' | 'male', SpeechSynthesisVoice | null>> = {};
+/**
+ * Resolved voices, keyed by what actually determines the choice.
+ *
+ * This used to be keyed by gender alone, which meant the first female
+ * character to speak decided the voice for every female character after her —
+ * their preferredKeywords were never consulted again, so Naina and Jean came
+ * out identical no matter how differently they were configured.
+ */
+const voiceCache = new Map<string, SpeechSynthesisVoice | null>();
+
+function cacheKey(settings: VoiceSettings): string {
+  return `${settings.gender}|${settings.preferredKeywords.join(',')}`;
+}
 
 function getVoice(settings: VoiceSettings, onReady: (v: SpeechSynthesisVoice | null) => void) {
-  if (voiceCache[settings.gender] !== undefined) {
-    onReady(voiceCache[settings.gender] ?? null);
+  const key = cacheKey(settings);
+  if (voiceCache.has(key)) {
+    onReady(voiceCache.get(key) ?? null);
     return;
   }
 
-  const voices = window.speechSynthesis.getVoices();
-  if (voices.length > 0) {
+  const resolve = () => {
     const v = findBestVoice(settings);
-    voiceCache[settings.gender] = v;
+    voiceCache.set(key, v);
     onReady(v);
-  } else {
-    // Voices not loaded yet — wait once
-    window.speechSynthesis.onvoiceschanged = () => {
-      window.speechSynthesis.onvoiceschanged = null;
-      // Bust cache when voices finally load
-      delete voiceCache['female'];
-      delete voiceCache['male'];
-      const v = findBestVoice(settings);
-      voiceCache[settings.gender] = v;
-      onReady(v);
-    };
+  };
+
+  if (window.speechSynthesis.getVoices().length > 0) {
+    resolve();
+    return;
   }
+
+  // Voices aren't loaded yet. addEventListener rather than assigning
+  // onvoiceschanged: two characters waiting at once would otherwise overwrite
+  // each other's handler and one would never get its voice.
+  window.speechSynthesis.addEventListener('voiceschanged', () => {
+    // Anything resolved against an empty list was a guess — start clean.
+    voiceCache.clear();
+    resolve();
+  }, { once: true });
 }
 
-/**
- * Speaks text. When `useKokoro` is set the higher-quality on-device model is
- * tried first, falling back to browser speech synthesis if it isn't ready,
- * isn't supported, or errors — so the user always hears something.
- */
 /**
  * Which browser voice this character would actually get on this device, and
  * whether it's the accent the character asked for.

@@ -595,9 +595,11 @@ export const CHARACTERS: Record<BuiltInCharacterId, CharacterConfig> = {
       // Kokoro has no Indian voice at all, so she stays on the device's own
       // TTS, where en-IN voices actually exist.
       preferBrowserVoice: true,
-      // Quicker and brighter than Naina — she talks fast and teases.
-      rate: 0.95,
-      pitch: 1.4,
+      // Clearly quicker and brighter than Naina (0.87 / 1.4). These have to
+      // differ audibly on their own: on a phone with only one usable female
+      // voice installed, prosody is the only thing separating the two.
+      rate: 1.02,
+      pitch: 1.62,
       volume: 1.0,
       gender: 'female',
       // Indian English female voices first, by the names the platforms use:
