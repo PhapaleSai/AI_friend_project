@@ -6,7 +6,7 @@ import WelcomePage from '@/components/WelcomePage';
 import ChatInterface from '@/components/ChatInterface';
 
 const NAME_KEY = 'friend-ai-username';
-const SHORTCUT_IDS = ['naina', 'bunny', 'aarav', 'maya'] as const;
+const SHORTCUT_IDS = ['naina', 'bunny', 'aarav', 'maya', 'jean'] as const;
 
 export default function Home() {
   const [stage, setStage] = useState<'welcome' | 'chat'>('welcome');

@@ -4,6 +4,8 @@ import type { CharacterId } from '@/lib/characters';
 import { shouldSearch, searchWeb, buildSearchContext } from '@/lib/search';
 import { shouldDraftEmail, draftEmailFromConversation, isEmailConfigured, type EmailDraft } from '@/lib/email';
 import { toneInstruction, type UserProfile } from '@/lib/profile';
+import { detectEmotionalContext, renderEmotionalDirective } from '@/lib/emotion';
+import { detectLanguage, renderLanguageDirective } from '@/lib/language';
 import { SOURCES_DELIMITER, EMAIL_DELIMITER, REPLIES_DELIMITER, REPLIES_MARKER } from '@/lib/constants';
 
 /**
@@ -69,8 +71,27 @@ export async function POST(req: Request) {
       }
     }
 
+    // Personas that opt in get a read on the emotional weight of this turn.
+    // It goes last so it outranks the lighter mood/tone hints above it.
+    const emotional = effectiveCharacter.usesEmotionalContext && lastUserMessage
+      ? detectEmotionalContext(lastUserMessage)
+      : null;
+    if (emotional) {
+      // Stating the language outright beats hoping a long prompt gets
+      // mirrored — without it, Hinglish came back as Devanagari Marathi.
+      extraContext += renderLanguageDirective(detectLanguage(lastUserMessage));
+      extraContext += renderEmotionalDirective(emotional);
+    }
+
+    // Tappable one-line comebacks under a message about self-harm would be
+    // grotesque, so the suggestions are dropped entirely for that turn.
+    const wantsQuickReplies = emotional?.emotion !== 'distress';
+
     const systemPrompt = buildSystemPrompt(
-      effectiveCharacter, memoryContext ?? '', userName ?? '', extraContext + REPLIES_INSTRUCTION,
+      effectiveCharacter,
+      memoryContext ?? '',
+      userName ?? '',
+      extraContext + (wantsQuickReplies ? REPLIES_INSTRUCTION : ''),
     );
 
     const encoder = new TextEncoder();
@@ -130,7 +151,12 @@ export async function POST(req: Request) {
               continue;
             }
 
-            const safeLength = pending.length - (REPLIES_MARKER.length - 1);
+            let safeLength = pending.length - (REPLIES_MARKER.length - 1);
+            // JS strings are UTF-16, so an emoji is two code units. Cutting
+            // between them leaves a lone surrogate, which encodes to U+FFFD —
+            // that's the "" that showed up mid-sentence. Back off by one.
+            const lastUnit = pending.charCodeAt(safeLength - 1);
+            if (lastUnit >= 0xd800 && lastUnit <= 0xdbff) safeLength -= 1;
             if (safeLength > 0) {
               controller.enqueue(encoder.encode(pending.slice(0, safeLength)));
               pending = pending.slice(safeLength);
@@ -145,7 +171,7 @@ export async function POST(req: Request) {
           if (emailDraft) {
             controller.enqueue(encoder.encode(EMAIL_DELIMITER + JSON.stringify(emailDraft)));
           }
-          const quickReplies = markerSeen ? parseQuickReplies(repliesRaw) : [];
+          const quickReplies = markerSeen && wantsQuickReplies ? parseQuickReplies(repliesRaw) : [];
           if (quickReplies.length > 0) {
             controller.enqueue(encoder.encode(REPLIES_DELIMITER + JSON.stringify(quickReplies)));
           }
