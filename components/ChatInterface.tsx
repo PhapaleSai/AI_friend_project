@@ -205,6 +205,9 @@ export default function ChatInterface({ initialCharacter = 'naina', onBack, user
     stopSpeaking();
     setSpeakingMessageId(null);
     const multiBubble = !!character.multiBubble;
+    // A character can opt out of Kokoro when the device's own voices suit it
+    // better — Jean wants an Indian accent, which Kokoro simply doesn't have.
+    const useKokoroVoice = profile.betterVoice && !character.voiceSettings.preferBrowserVoice;
 
     const userMsg: Message = {
       id: genId(), role: 'user', content: text.trim(),
@@ -326,7 +329,7 @@ export default function ChatInterface({ initialCharacter = 'naina', onBack, user
         speak(displayText, character.voiceSettings, {
           onEnd: resume,
           onError: resume,
-        }, profile.betterVoice);
+        }, useKokoroVoice);
       } else {
         setOrbState('idle');
         if (callActiveRef.current) setTimeout(() => nextCallTurnRef.current(), 350);
@@ -577,7 +580,7 @@ export default function ChatInterface({ initialCharacter = 'naina', onBack, user
     speak(message.content, character.voiceSettings, {
       onEnd: () => setSpeakingMessageId(null),
       onError: () => setSpeakingMessageId(null),
-    }, profile.betterVoice);
+    }, profile.betterVoice && !character.voiceSettings.preferBrowserVoice);
   }, [character, speakingMessageId, profile.betterVoice]);
 
   const handleClear = useCallback(() => {

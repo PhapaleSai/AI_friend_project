@@ -35,10 +35,13 @@ export function isMicSupported(): boolean {
   return typeof window !== 'undefined' && !!navigator.mediaDevices?.getUserMedia && typeof MediaRecorder !== 'undefined';
 }
 
-const FEMALE_SIGNALS = ['female', 'woman', 'girl', 'samantha', 'zira', 'victoria', 'karen', 'susan', 'fiona', 'moira', 'tessa', 'veena', 'allison', 'ava', 'kate', 'serena', 'rishi'];
-const MALE_SIGNALS   = ['male', 'man', 'boy', 'david', 'alex', 'daniel', 'mark', 'james', 'oliver', 'fred', 'tom', 'gordon', 'arthur', 'lee', 'xander'];
+// Voice-name fragments that identify a speaker's gender. 'rishi' belongs on
+// the male list — it's Apple's male Indian English voice, and having it here
+// pushed female characters onto it on iOS and macOS.
+const FEMALE_SIGNALS = ['female', 'woman', 'girl', 'samantha', 'zira', 'victoria', 'karen', 'susan', 'fiona', 'moira', 'tessa', 'veena', 'allison', 'ava', 'kate', 'serena', 'heera', 'neerja', 'aditi', 'priya', 'raveena'];
+const MALE_SIGNALS   = ['male', 'man', 'boy', 'david', 'alex', 'daniel', 'mark', 'james', 'oliver', 'fred', 'tom', 'gordon', 'arthur', 'lee', 'xander', 'rishi', 'ravi', 'hemant', 'madhur'];
 
-function scoreVoice(voice: SpeechSynthesisVoice, gender: 'female' | 'male', keywords: string[]): number {
+export function scoreVoice(voice: SpeechSynthesisVoice, gender: 'female' | 'male', keywords: string[]): number {
   const name = voice.name.toLowerCase();
   const lang = voice.lang.toLowerCase();
   let score = 0;

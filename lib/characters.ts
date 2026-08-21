@@ -17,6 +17,12 @@ export interface VoiceSettings {
    * set one are unaffected. Ids come from Kokoro's built-in voice set.
    */
   kokoroVoice?: string;
+  /**
+   * Force the browser voice even when the user has the on-device Kokoro voice
+   * switched on. Kokoro ships 28 voices, all en-us/en-gb, so a character who
+   * needs an accent it doesn't have is better served by the phone's own TTS.
+   */
+  preferBrowserVoice?: boolean;
   // Web Speech API (fallback when ElevenLabs key not set)
   rate: number;
   pitch: number;
@@ -583,15 +589,21 @@ export const CHARACTERS: Record<BuiltInCharacterId, CharacterConfig> = {
       elevenlabsStability: 0.42,
       elevenlabsSimilarity: 0.8,
       elevenlabsStyle: 0.45,
-      // Bella rather than the default Heart: brighter and with more edge to
-      // it, which suits someone who spends half her time pretending to sulk.
+      // Only reached if preferBrowserVoice is turned off below. Bella is the
+      // brightest A-grade voice Kokoro has, but it is unmistakably American.
       kokoroVoice: 'af_bella',
+      // Kokoro has no Indian voice at all, so she stays on the device's own
+      // TTS, where en-IN voices actually exist.
+      preferBrowserVoice: true,
       // Quicker and brighter than Naina — she talks fast and teases.
       rate: 0.95,
-      pitch: 1.45,
+      pitch: 1.4,
       volume: 1.0,
       gender: 'female',
-      preferredKeywords: ['google uk english female', 'microsoft zira', 'samantha', 'zira', 'victoria', 'karen', 'female', 'woman'],
+      // Indian English female voices first, by the names the platforms use:
+      // Neerja/Heera on Windows, Veena on Apple, then any en-IN voice, then
+      // Hindi. Generic female voices are the last resort.
+      preferredKeywords: ['neerja', 'heera', 'veena', 'aditi', 'raveena', 'priya', 'en-in', 'india', 'indian', 'hindi', 'hi-in', 'female', 'woman'],
     },
     suggestions: [
       'guess what happened today',
