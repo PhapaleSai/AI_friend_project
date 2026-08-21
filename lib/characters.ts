@@ -11,6 +11,12 @@ export interface VoiceSettings {
   elevenlabsStability: number;    // 0–1: lower = more expressive/variable
   elevenlabsSimilarity: number;   // 0–1: how close to original voice
   elevenlabsStyle: number;        // 0–1: style exaggeration (emotion/energy)
+  /**
+   * Which Kokoro voice this character uses, when the on-device voice is on.
+   * Falls back to the shared default for the gender, so characters that don't
+   * set one are unaffected. Ids come from Kokoro's built-in voice set.
+   */
+  kokoroVoice?: string;
   // Web Speech API (fallback when ElevenLabs key not set)
   rate: number;
   pitch: number;
@@ -577,6 +583,9 @@ export const CHARACTERS: Record<BuiltInCharacterId, CharacterConfig> = {
       elevenlabsStability: 0.42,
       elevenlabsSimilarity: 0.8,
       elevenlabsStyle: 0.45,
+      // Bella rather than the default Heart: brighter and with more edge to
+      // it, which suits someone who spends half her time pretending to sulk.
+      kokoroVoice: 'af_bella',
       // Quicker and brighter than Naina — she talks fast and teases.
       rate: 0.95,
       pitch: 1.45,

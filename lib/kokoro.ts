@@ -16,7 +16,9 @@ import type { VoiceSettings } from './characters';
 
 const MODEL_ID = 'onnx-community/Kokoro-82M-v1.0-ONNX';
 
-// Kokoro voice ids, picked to roughly match each character's configured gender.
+// Fallback voices, used by any character that doesn't name its own in
+// voiceSettings.kokoroVoice. Both are the highest-graded voice for their
+// gender in Kokoro's set.
 const FEMALE_VOICE = 'af_heart';
 const MALE_VOICE = 'am_michael';
 
@@ -137,7 +139,8 @@ export async function speakWithKokoro(
   try {
     stopKokoro();
     const tts = await loadKokoro();
-    const voice = voiceSettings.gender === 'male' ? MALE_VOICE : FEMALE_VOICE;
+    const voice = voiceSettings.kokoroVoice
+      ?? (voiceSettings.gender === 'male' ? MALE_VOICE : FEMALE_VOICE);
 
     const audio = await tts.generate(text, { voice });
     const blob: Blob = audio.toBlob();
