@@ -4,11 +4,15 @@ import { useState, useEffect } from 'react';
 import type { UserProfile } from '@/lib/profile';
 import { TONE_LABELS } from '@/lib/profile';
 import { loadKokoro, isKokoroReady, isKokoroLoading, isKokoroSupported } from '@/lib/kokoro';
+import { describeVoice, onVoicesReady } from '@/lib/speech';
+import type { VoiceSettings } from '@/lib/characters';
 
 interface ProfilePanelProps {
   profile: UserProfile;
   facts: string[];
   characterName: string;
+  /** Of the active character — used to show which device voice they'll get. */
+  voiceSettings: VoiceSettings;
   accentColor: string;
   onSave: (profile: UserProfile) => void;
   onDeleteFact: (index: number) => void;
@@ -16,7 +20,7 @@ interface ProfilePanelProps {
 }
 
 export default function ProfilePanel({
-  profile, facts, characterName, accentColor, onSave, onDeleteFact, onClose,
+  profile, facts, characterName, voiceSettings, accentColor, onSave, onDeleteFact, onClose,
 }: ProfilePanelProps) {
   const [nickname, setNickname] = useState(profile.nickname);
   const [birthday, setBirthday] = useState(profile.birthday);
@@ -25,6 +29,14 @@ export default function ProfilePanel({
   const [voiceProgress, setVoiceProgress] = useState<number | null>(null);
   const [voiceError, setVoiceError] = useState('');
   const [voiceReady, setVoiceReady] = useState(isKokoroReady());
+  // The device's voice list is often empty on first render, and populates a
+  // moment later — so this re-reads on the voiceschanged event.
+  const [deviceVoice, setDeviceVoice] = useState(() => describeVoice(voiceSettings));
+  useEffect(() => {
+    if (deviceVoice) return;
+    setDeviceVoice(describeVoice(voiceSettings));
+    return onVoicesReady(() => setDeviceVoice(describeVoice(voiceSettings)));
+  }, [deviceVoice, voiceSettings]);
   const [voiceLoading, setVoiceLoading] = useState(isKokoroLoading());
 
   // A download started by playback has no callback to hand this panel, so poll
@@ -167,9 +179,35 @@ export default function ProfilePanel({
                 <div className="h-full rounded-full transition-all duration-200" style={{ width: `${voiceProgress}%`, background: accentColor }} />
               </div>
             )}
+            {voiceSettings.preferBrowserVoice && (
+              <p className="text-[0.6875rem] text-slate-500 leading-snug mb-1.5">
+                Doesn&apos;t apply to {characterName} — she needs an accent the on-device voice
+                doesn&apos;t have, so she always uses your phone&apos;s voice.
+              </p>
+            )}
             {voiceError && <p className="text-[0.6875rem] text-amber-400 mb-4">{voiceError}</p>}
             {voiceProgress === null && !voiceError && <div className="mb-4" />}
           </>
+        )}
+
+        {deviceVoice && (
+          <div
+            className="mb-4 px-3 py-2.5 rounded-xl"
+            style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }}
+          >
+            <p className="text-[0.6875rem] text-slate-400 leading-snug">
+              {characterName}&apos;s voice on this device:{' '}
+              <span className="text-slate-200 font-medium">{deviceVoice.name}</span>{' '}
+              <span className="text-slate-600">({deviceVoice.lang})</span>
+            </p>
+            {!deviceVoice.matchesPreferredAccent && (
+              <p className="text-[0.6875rem] text-amber-400/90 leading-snug mt-1.5">
+                No Indian English voice installed, so she&apos;s using this one instead. On Android:
+                Settings → System → Languages &amp; input → Text-to-speech output → install voice
+                data → English (India).
+              </p>
+            )}
+          </div>
         )}
 
         <label className="block text-xs font-semibold text-slate-400 mb-1.5">

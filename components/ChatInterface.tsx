@@ -677,6 +677,7 @@ export default function ChatInterface({ initialCharacter = 'naina', onBack, user
           profile={profile}
           facts={memoryFacts}
           characterName={character.name}
+          voiceSettings={character.voiceSettings}
           accentColor={character.theme.primary}
           onSave={(p) => { setProfile(p); saveProfile(p); }}
           onDeleteFact={handleDeleteFact}

@@ -133,6 +133,39 @@ function getVoice(settings: VoiceSettings, onReady: (v: SpeechSynthesisVoice | n
  * tried first, falling back to browser speech synthesis if it isn't ready,
  * isn't supported, or errors — so the user always hears something.
  */
+/**
+ * Which browser voice this character would actually get on this device, and
+ * whether it's the accent the character asked for.
+ *
+ * Voice availability is a property of the phone, not of the app — the en-IN
+ * voices are an optional download on Android. Rather than silently sounding
+ * wrong, this lets the UI say which voice is in use and point at the fix.
+ *
+ * Returns null while the voice list is still loading, which it often is right
+ * after page load; callers should re-check on the voiceschanged event.
+ */
+export function describeVoice(settings: VoiceSettings): { name: string; lang: string; matchesPreferredAccent: boolean } | null {
+  if (!isSpeechSynthesisSupported()) return null;
+  if (window.speechSynthesis.getVoices().length === 0) return null;
+
+  const voice = findBestVoice(settings);
+  if (!voice) return null;
+
+  // Only meaningful for characters that actually asked for an accent.
+  const wantsIndian = settings.preferredKeywords.some((k) => /en-in|india|hindi|hi-in/i.test(k));
+  const isIndian = /^(en-in|hi)/i.test(voice.lang);
+
+  return { name: voice.name, lang: voice.lang, matchesPreferredAccent: !wantsIndian || isIndian };
+}
+
+/** Runs `onChange` whenever the device's voice list becomes available. */
+export function onVoicesReady(onChange: () => void): () => void {
+  if (!isSpeechSynthesisSupported()) return () => {};
+  const handler = () => onChange();
+  window.speechSynthesis.addEventListener('voiceschanged', handler);
+  return () => window.speechSynthesis.removeEventListener('voiceschanged', handler);
+}
+
 export function speak(
   text: string,
   voiceSettings: VoiceSettings,
