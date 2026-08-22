@@ -340,6 +340,44 @@ function EmailDraftCard({ draft, color }: { draft: NonNullable<Message['emailDra
   );
 }
 
+/** Clock time for a message, or null for ones saved before timestamps existed. */
+function formatTime(iso?: string): string | null {
+  if (!iso) return null;
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return null;
+  return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+}
+
+/** WhatsApp-style delivery ticks: one grey, two grey, two blue. */
+function Ticks({ status }: { status?: Message['status'] }) {
+  if (!status) return null;
+  const read = status === 'read';
+  const double = status !== 'sent';
+  return (
+    <svg
+      width={double ? 15 : 11}
+      height="11"
+      viewBox={double ? '0 0 18 12' : '0 0 12 12'}
+      fill="none"
+      className="flex-shrink-0"
+      aria-label={status}
+    >
+      <path
+        d={double ? 'M1 6.6 L4.2 9.8 L10.4 2.6' : 'M1 6.6 L4.2 9.8 L10.4 2.6'}
+        stroke={read ? '#38bdf8' : 'rgba(255,255,255,0.65)'}
+        strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"
+      />
+      {double && (
+        <path
+          d="M7.2 9.6 L13.2 2.6"
+          stroke={read ? '#38bdf8' : 'rgba(255,255,255,0.65)'}
+          strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"
+        />
+      )}
+    </svg>
+  );
+}
+
 export default function MessageBubble({ message, character, showAvatar = true, isSpeaking = false, onToggleSpeak, highlight }: MessageBubbleProps) {
   const isUser = message.role === 'user';
   const { theme } = character;
@@ -358,6 +396,10 @@ export default function MessageBubble({ message, character, showAvatar = true, i
             <VoiceNoteRow audioUrl={message.audioUrl} color={theme.secondary} />
           )}
           {highlightText(message.content, highlight)}
+          <span className="flex items-center justify-end gap-1 mt-0.5 -mb-0.5 leading-none">
+            <span className="text-[0.625rem] text-white/60">{formatTime(message.createdAt)}</span>
+            <Ticks status={message.status} />
+          </span>
         </div>
       </div>
     );
@@ -401,6 +443,11 @@ export default function MessageBubble({ message, character, showAvatar = true, i
             </div>
           )}
           {message.emailDraft && <EmailDraftCard draft={message.emailDraft} color={theme.primary} />}
+          {!message.isStreaming && formatTime(message.createdAt) && (
+            <span className="block text-right text-[0.625rem] text-slate-500 mt-0.5 -mb-0.5 leading-none">
+              {formatTime(message.createdAt)}
+            </span>
+          )}
         </div>
         {!message.isStreaming && message.content && onToggleSpeak && (
           <ReplayVoiceButton isSpeaking={isSpeaking} onToggle={onToggleSpeak} color={theme.primary} />

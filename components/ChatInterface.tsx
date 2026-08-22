@@ -229,6 +229,7 @@ export default function ChatInterface({ initialCharacter = 'naina', onBack, user
       id: genId(), role: 'user', content: text.trim(),
       isVoiceNote: voiceMeta?.isVoiceNote, audioUrl: voiceMeta?.audioUrl,
       createdAt: new Date().toISOString(),
+      status: 'sent',
     };
     // Everything downstream builds on this rather than on `messages`, so the
     // opener path differs only by not having a user turn in front of it.
@@ -270,6 +271,16 @@ export default function ChatInterface({ initialCharacter = 'naina', onBack, user
           if (errData.error) errMsg = errData.error;
         } catch { /* ignore */ }
         throw new Error(errMsg);
+      }
+
+      // Server accepted it and the reply is on its way: second tick.
+      if (userMsg) {
+        setMessagesByChar((prev) => ({
+          ...prev,
+          [characterId]: (prev[characterId] ?? []).map((m) =>
+            m.id === userMsg.id ? { ...m, status: 'delivered' as const } : m
+          ),
+        }));
       }
 
       const reader = res.body.getReader();
@@ -323,12 +334,15 @@ export default function ChatInterface({ initialCharacter = 'naina', onBack, user
         ...(i === segments.length - 1 ? { sources, emailDraft, quickReplies } : {}),
       }));
 
-      const finalMessages = [...baseMessages, ...bubbles];
+      const readBase = userMsg
+        ? baseMessages.map((m) => (m.id === userMsg.id ? { ...m, status: 'read' as const } : m))
+        : baseMessages;
+      const finalMessages = [...readBase, ...bubbles];
       const regexFacts = buildMemoryContext(finalMessages);
       const mergedFacts = mergeFacts(memoryFacts, regexFacts);
       setMemoryByChar((prev) => ({ ...prev, [characterId]: mergedFacts }));
       // First bubble lands immediately; the rest follow below.
-      setMessagesByChar((prev) => ({ ...prev, [characterId]: [...baseMessages, bubbles[0]] }));
+      setMessagesByChar((prev) => ({ ...prev, [characterId]: [...readBase, bubbles[0]] }));
 
       // On a call the reply is always spoken — the mute toggle governs the
       // chat view, and a silent call would just be a dead line. Speech covers
@@ -363,7 +377,7 @@ export default function ChatInterface({ initialCharacter = 'naina', onBack, user
           await new Promise((resolve) => setTimeout(resolve, bubbleDelay(bubbles[i].content)));
           setMessagesByChar((prev) => ({
             ...prev,
-            [characterId]: [...baseMessages, ...bubbles.slice(0, i + 1)],
+            [characterId]: [...readBase, ...bubbles.slice(0, i + 1)],
           }));
         }
         setIsRevealing(false);
