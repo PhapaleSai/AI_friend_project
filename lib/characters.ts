@@ -72,6 +72,12 @@ export interface CharacterConfig {
    * would just chop sentences apart.
    */
   multiBubble?: boolean;
+  /**
+   * Text first when the chat is opened, instead of waiting to be spoken to.
+   * Only for personas where that reads as personality rather than as a bot
+   * shouting at you the moment a screen loads.
+   */
+  greetsFirst?: boolean;
   isCustom?: boolean;
   /**
    * For custom characters only: the raw personality text the user typed,
@@ -568,6 +574,7 @@ export const CHARACTERS: Record<BuiltInCharacterId, CharacterConfig> = {
     systemPrompt: JEAN_SYSTEM,
     usesEmotionalContext: true,
     multiBubble: true,
+    greetsFirst: true,
     theme: {
       primary: '#f43f5e',
       secondary: '#fb923c',

@@ -47,6 +47,11 @@ const CALL_SILENCE_MS = 1300;     // quiet time after speech that ends your turn
 const CALL_MAX_TURN_MS = 25_000;  // hard cap so one long turn can't run away
 const CALL_NO_SPEECH_MS = 12_000; // silence from the start — assume they walked off
 
+// How cold a thread must be before a character who texts first opens again.
+// Short enough that coming back later feels like she noticed, long enough
+// that flicking between characters doesn't trigger a greeting each time.
+const GREETING_STALE_MS = 30 * 60 * 1000;
+
 function genId() {
   return Math.random().toString(36).slice(2, 10);
 }
@@ -135,6 +140,9 @@ export default function ChatInterface({ initialCharacter = 'naina', onBack, user
   const turnEndingRef = useRef(false);
   // Breaks the cycle between "finish a turn" and "start the next one".
   const nextCallTurnRef = useRef<() => void>(() => {});
+  // Characters already greeted this session, so reopening a chat doesn't
+  // stack up openers.
+  const openedRef = useRef<Set<string>>(new Set());
 
   const character = allCharacters[characterId];
   const messages = messagesByChar[characterId] ?? [];
@@ -200,8 +208,16 @@ export default function ChatInterface({ initialCharacter = 'naina', onBack, user
     setSearchQuery('');
   }, []);
 
-  const sendMessage = useCallback(async (text: string, voiceMeta?: { isVoiceNote?: boolean; audioUrl?: string }) => {
-    if (!text.trim() || isLoading || !character) return;
+  const sendMessage = useCallback(async (
+    text: string,
+    voiceMeta?: { isVoiceNote?: boolean; audioUrl?: string },
+    opts?: { opener?: boolean },
+  ) => {
+    // An opener is a turn she starts herself, so there is no user message to
+    // require, to render, or to store.
+    const opener = opts?.opener === true;
+    if (isLoading || !character) return;
+    if (!opener && !text.trim()) return;
     stopSpeaking();
     setSpeakingMessageId(null);
     const multiBubble = !!character.multiBubble;
@@ -209,17 +225,20 @@ export default function ChatInterface({ initialCharacter = 'naina', onBack, user
     // better — Jean wants an Indian accent, which Kokoro simply doesn't have.
     const useKokoroVoice = profile.betterVoice && !character.voiceSettings.preferBrowserVoice;
 
-    const userMsg: Message = {
+    const userMsg: Message | null = opener ? null : {
       id: genId(), role: 'user', content: text.trim(),
       isVoiceNote: voiceMeta?.isVoiceNote, audioUrl: voiceMeta?.audioUrl,
       createdAt: new Date().toISOString(),
     };
+    // Everything downstream builds on this rather than on `messages`, so the
+    // opener path differs only by not having a user turn in front of it.
+    const baseMessages = userMsg ? [...messages, userMsg] : messages;
     const assistantId = genId();
     const assistantMsg: Message = {
       id: assistantId, role: 'assistant', content: '', isStreaming: true,
       createdAt: new Date().toISOString(),
     };
-    const updatedMessages = [...messages, userMsg, assistantMsg];
+    const updatedMessages = [...baseMessages, assistantMsg];
 
     setMessagesByChar((prev) => ({ ...prev, [characterId]: updatedMessages }));
     setInputText('');
@@ -228,7 +247,7 @@ export default function ChatInterface({ initialCharacter = 'naina', onBack, user
     setStatusText('Thinking...');
 
     try {
-      const history = [...messages, userMsg].map((m) => ({ role: m.role, content: m.content }));
+      const history = baseMessages.map((m) => ({ role: m.role, content: m.content }));
       const res = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -240,6 +259,7 @@ export default function ChatInterface({ initialCharacter = 'naina', onBack, user
           mood: mood || undefined,
           tone: profile.tone !== 'default' ? profile.tone : undefined,
           customSystemPrompt: character.isCustom ? character.systemPrompt : undefined,
+          opener: opener || undefined,
         }),
       });
 
@@ -303,12 +323,12 @@ export default function ChatInterface({ initialCharacter = 'naina', onBack, user
         ...(i === segments.length - 1 ? { sources, emailDraft, quickReplies } : {}),
       }));
 
-      const finalMessages = [...messages, userMsg, ...bubbles];
+      const finalMessages = [...baseMessages, ...bubbles];
       const regexFacts = buildMemoryContext(finalMessages);
       const mergedFacts = mergeFacts(memoryFacts, regexFacts);
       setMemoryByChar((prev) => ({ ...prev, [characterId]: mergedFacts }));
       // First bubble lands immediately; the rest follow below.
-      setMessagesByChar((prev) => ({ ...prev, [characterId]: [...messages, userMsg, bubbles[0]] }));
+      setMessagesByChar((prev) => ({ ...prev, [characterId]: [...baseMessages, bubbles[0]] }));
 
       // On a call the reply is always spoken — the mute toggle governs the
       // chat view, and a silent call would just be a dead line. Speech covers
@@ -343,7 +363,7 @@ export default function ChatInterface({ initialCharacter = 'naina', onBack, user
           await new Promise((resolve) => setTimeout(resolve, bubbleDelay(bubbles[i].content)));
           setMessagesByChar((prev) => ({
             ...prev,
-            [characterId]: [...messages, userMsg, ...bubbles.slice(0, i + 1)],
+            [characterId]: [...baseMessages, ...bubbles.slice(0, i + 1)],
           }));
         }
         setIsRevealing(false);
@@ -489,6 +509,22 @@ export default function ChatInterface({ initialCharacter = 'naina', onBack, user
     setCallActive(true);
     nextCallTurnRef.current();
   }, [voiceSupported, ttsSupported, isLoading]);
+
+  // She texts first. Only when the thread is empty or has gone cold — if they
+  // are mid-conversation, an unprompted greeting on top of it reads as a bot,
+  // which is the opposite of the point.
+  useEffect(() => {
+    if (!hydrated || !character?.greetsFirst) return;
+    if (isLoading || showMood) return; // let the mood prompt be answered first
+    if (openedRef.current.has(characterId)) return;
+
+    const last = messages[messages.length - 1];
+    const lastAt = last?.createdAt ? new Date(last.createdAt).getTime() : 0;
+    if (last && Date.now() - lastAt < GREETING_STALE_MS) return;
+
+    openedRef.current.add(characterId);
+    sendMessage('', undefined, { opener: true });
+  }, [hydrated, character, characterId, isLoading, showMood, messages, sendMessage]);
 
   // Call timer
   useEffect(() => {
@@ -754,11 +790,21 @@ export default function ChatInterface({ initialCharacter = 'naina', onBack, user
                 unoptimized={character.isCustom}
               />
             </div>
-            <span
-              className="text-[1.0000rem] font-semibold leading-none truncate"
-              style={{ color: character.theme.primary }}
-            >
-              {character.name}
+            {/* Name over a live status, the way a messaging app shows who
+                you're talking to and what they're doing right now. */}
+            <span className="flex flex-col items-start min-w-0">
+              <span
+                className="text-[1.0000rem] font-semibold leading-tight truncate"
+                style={{ color: character.theme.primary }}
+              >
+                {character.name}
+              </span>
+              <span className="text-[0.6875rem] leading-tight text-slate-400 truncate">
+                {isLoading || isRevealing ? 'typing…'
+                  : orbState === 'speaking' ? 'speaking…'
+                  : orbState === 'listening' ? 'listening…'
+                  : 'online'}
+              </span>
             </span>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"
               className="flex-shrink-0" style={{ color: character.theme.primary }}>
