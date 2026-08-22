@@ -3,7 +3,7 @@ import { CHARACTERS, buildSystemPrompt } from '@/lib/characters';
 import type { CharacterId } from '@/lib/characters';
 import { shouldSearch, searchWeb, buildSearchContext } from '@/lib/search';
 import { shouldDraftEmail, draftEmailFromConversation, isEmailConfigured, type EmailDraft } from '@/lib/email';
-import { toneInstruction, type UserProfile } from '@/lib/profile';
+import { toneInstruction, type Tone } from '@/lib/tone';
 import { detectEmotionalContext, renderEmotionalDirective } from '@/lib/emotion';
 import { detectLanguage, renderLanguageDirective } from '@/lib/language';
 import { SOURCES_DELIMITER, EMAIL_DELIMITER, REPLIES_DELIMITER, REPLIES_MARKER } from '@/lib/constants';
@@ -72,7 +72,7 @@ export async function POST(req: Request) {
       memoryContext?: string;
       userName?: string;
       mood?: string;
-      tone?: UserProfile['tone'];
+      tone?: Tone;
       customSystemPrompt?: string;
     };
 
