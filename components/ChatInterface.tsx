@@ -16,7 +16,7 @@ import {
 } from '@/lib/memory';
 import { loadProfile, saveProfile, type UserProfile } from '@/lib/profile';
 import { SOURCES_DELIMITER, EMAIL_DELIMITER, REPLIES_DELIMITER } from '@/lib/constants';
-import { splitIntoBubbles, bubbleDelay } from '@/lib/bubbles';
+import { splitIntoBubbles } from '@/lib/bubbles';
 import VoiceOrb from './VoiceOrb';
 import MessageBubble from './MessageBubble';
 import InputBar from './InputBar';
@@ -39,6 +39,7 @@ import {
 
 const MOOD_SESSION_KEY = 'friend-ai-mood-session';
 const FACT_EXTRACTION_EVERY = 6; // user turns between background LLM fact-extraction passes
+const API_HISTORY_TURNS = 20;    // recent messages sent with each request; older ones live on as memory facts
 
 // Hands-free call mode. Turns end on a pause rather than a button, so these
 // thresholds decide how it feels: too eager and it cuts you off mid-sentence,
@@ -130,7 +131,6 @@ export default function ChatInterface({ initialCharacter = 'naina', onBack, user
   const [callActive, setCallActive] = useState(false);
   const [callSeconds, setCallSeconds] = useState(0);
   // True between the first and last bubble of a multi-bubble reply.
-  const [isRevealing, setIsRevealing] = useState(false);
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const recordingHandleRef = useRef<RecordingHandle | null>(null);
@@ -264,7 +264,13 @@ export default function ChatInterface({ initialCharacter = 'naina', onBack, user
     setStatusText('Thinking...');
 
     try {
-      const history = baseMessages.map((m) => ({ role: m.role, content: m.content }));
+      // Only the recent turns go up. The whole thread was being re-sent every
+      // time, so each reply cost more tokens — and more waiting — than the
+      // one before it, while the parts that matter long-term are already kept
+      // separately as memory facts.
+      const history = baseMessages
+        .slice(-API_HISTORY_TURNS)
+        .map((m) => ({ role: m.role, content: m.content }));
       const res = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -308,7 +314,11 @@ export default function ChatInterface({ initialCharacter = 'naina', onBack, user
         const { done, value } = await reader.read();
         if (done) break;
         fullText += decoder.decode(value, { stream: true });
-        if (multiBubble) continue; // painted as bubbles once the stream ends
+        // Multi-bubble personas used to paint nothing at all until the stream
+        // closed, which meant waiting out the reply *and* the follow-up
+        // suggestions that trail it before a single word appeared — the bulk
+        // of why a reply felt slow on a phone. The text now lands live in the
+        // first bubble and is split into the separate bubbles at the end.
         const displayText = fullText
           .split(SOURCES_DELIMITER)[0].split(EMAIL_DELIMITER)[0].split(REPLIES_DELIMITER)[0];
         setMessagesByChar((prev) => ({
@@ -357,8 +367,11 @@ export default function ChatInterface({ initialCharacter = 'naina', onBack, user
       const regexFacts = buildMemoryContext(finalMessages);
       const mergedFacts = mergeFacts(memoryFacts, regexFacts);
       setMemoryByChar((prev) => ({ ...prev, [characterId]: mergedFacts }));
-      // First bubble lands immediately; the rest follow below.
-      setMessagesByChar((prev) => ({ ...prev, [characterId]: [...readBase, bubbles[0]] }));
+      // All of it lands at once. The reply has been on screen as it streamed,
+      // so holding bubbles back to reveal them one by one would make text the
+      // user had already read disappear and return — and it spent several
+      // seconds doing it, after the reply was finished.
+      setMessagesByChar((prev) => ({ ...prev, [characterId]: finalMessages }));
 
       // On a call the reply is always spoken — the mute toggle governs the
       // chat view, and a silent call would just be a dead line. Speech covers
@@ -367,36 +380,31 @@ export default function ChatInterface({ initialCharacter = 'naina', onBack, user
       if ((voiceEnabled || callActiveRef.current) && ttsSupported && displayText) {
         // Hand the turn back to the mic once the reply finishes, after a beat
         // so the tail of the sentence isn't recorded back as your answer.
-        const resume = () => {
+        const resume = (failure?: string) => {
           setOrbState('idle');
-          setStatusText('');
           setSpeakingMessageId(null);
+          // A reply that could not be spoken used to look identical to one
+          // that had finished speaking, so a muted device or a browser that
+          // refused the voice read as the app being broken. Say so instead —
+          // the text is there either way, and tapping the bubble retries.
+          if (failure) {
+            setStatusText("Couldn't play the voice — tap the reply to retry");
+            setTimeout(() => setStatusText(''), 3500);
+          } else {
+            setStatusText('');
+          }
           if (callActiveRef.current) setTimeout(() => nextCallTurnRef.current(), 350);
         };
         setOrbState('speaking');
         setStatusText('Speaking...');
         setSpeakingMessageId(assistantId);
         speak(displayText, character.voiceSettings, {
-          onEnd: resume,
-          onError: resume,
+          onEnd: () => resume(),
+          onError: (e) => resume(e || 'speech failed'),
         }, useKokoroVoice);
       } else {
         setOrbState('idle');
         if (callActiveRef.current) setTimeout(() => nextCallTurnRef.current(), 350);
-      }
-
-      // Remaining bubbles arrive one at a time, with the typing dots in
-      // between, the way a person sending three quick texts looks.
-      if (bubbles.length > 1) {
-        setIsRevealing(true);
-        for (let i = 1; i < bubbles.length; i++) {
-          await new Promise((resolve) => setTimeout(resolve, bubbleDelay(bubbles[i].content)));
-          setMessagesByChar((prev) => ({
-            ...prev,
-            [characterId]: [...readBase, ...bubbles.slice(0, i + 1)],
-          }));
-        }
-        setIsRevealing(false);
       }
 
       saveConversation(characterId, finalMessages, mergedFacts);
@@ -830,7 +838,7 @@ export default function ChatInterface({ initialCharacter = 'naina', onBack, user
                 {character.name}
               </span>
               <span className="text-[0.6875rem] leading-tight text-slate-400 truncate">
-                {isLoading || isRevealing ? 'typing…'
+                {isLoading ? 'typing…'
                   : orbState === 'speaking' ? 'speaking…'
                   : orbState === 'listening' ? 'listening…'
                   : 'online'}
@@ -1166,13 +1174,13 @@ export default function ChatInterface({ initialCharacter = 'naina', onBack, user
                 );
               })}
               {/* Typing indicator while loading before stream starts */}
-              {((isLoading && messages.length > 0 && !messages[messages.length - 1]?.content) || isRevealing) && (
+              {isLoading && messages.length > 0 && !messages[messages.length - 1]?.content && (
                 <TypingIndicator color={character.theme.primary} />
               )}
 
               {/* Quick replies — only under the newest reply, and never while
                   searching, where the "last message" isn't the thread's last. */}
-              {!trimmedQuery && !isLoading && !isRevealing && !callActive && quickReplies.length > 0 && (
+              {!trimmedQuery && !isLoading && !callActive && quickReplies.length > 0 && (
                 <div className="flex flex-wrap gap-1.5 px-4 pt-1 pb-2 fade-in">
                   {quickReplies.map((reply) => (
                     <button

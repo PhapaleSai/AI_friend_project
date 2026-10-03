@@ -31,6 +31,16 @@ function stripEmojisAndClean(text: string): string {
     .trim();
 }
 
+/**
+ * Whether this is a phone or tablet. Used only to choose between equally
+ * valid options where the two behave differently — never to hide a feature.
+ */
+export function isMobileDevice(): boolean {
+  if (typeof window === 'undefined') return false;
+  if (navigator.maxTouchPoints > 1 && !/Macintosh/.test(navigator.userAgent)) return true;
+  return /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
+}
+
 export function isMicSupported(): boolean {
   return typeof window !== 'undefined' && !!navigator.mediaDevices?.getUserMedia && typeof MediaRecorder !== 'undefined';
 }
@@ -68,8 +78,11 @@ export function scoreVoice(voice: SpeechSynthesisVoice, gender: 'female' | 'male
   if (lang === 'en-us') score += 20;
   if (lang.startsWith('en')) score += 10;
 
-  // Network/non-local voices are usually higher quality
-  if (!voice.localService) score += 5;
+  // On a desktop a network voice is usually the better-sounding one. On a
+  // phone it is the one that fails: it needs a round trip to the vendor's
+  // server for every reply and goes silent on a weak connection, so a locally
+  // installed voice is the reliable pick there.
+  if (isMobileDevice() ? voice.localService : !voice.localService) score += 5;
 
   return score;
 }
@@ -108,7 +121,7 @@ function findBestVoice(settings: VoiceSettings): SpeechSynthesisVoice | null {
  * their preferredKeywords were never consulted again, so Naina and Jean came
  * out identical no matter how differently they were configured.
  */
-const voiceCache = new Map<string, SpeechSynthesisVoice | null>();
+const voiceCache = new Map<string, string | null>();
 
 // How long to wait for the device's voice list before speaking anyway.
 const VOICE_LIST_TIMEOUT_MS = 1000;
@@ -117,7 +130,16 @@ function cacheKey(settings: VoiceSettings): string {
   return `${settings.gender}|${settings.preferredKeywords.join(',')}`;
 }
 
-function getVoice(settings: VoiceSettings, onReady: (v: SpeechSynthesisVoice | null) => void) {
+/**
+ * Resolves the chosen voice's *name*, not the voice object.
+ *
+ * Holding the object across turns looked equivalent and wasn't: Android
+ * rebuilds its voice list in the background, and an utterance assigned a voice
+ * from the old list is rejected without a sound and without an error. The name
+ * is stable, so it is looked up against the live list at the moment of
+ * speaking instead.
+ */
+function getVoiceName(settings: VoiceSettings, onReady: (name: string | null) => void) {
   const key = cacheKey(settings);
   if (voiceCache.has(key)) {
     onReady(voiceCache.get(key) ?? null);
@@ -125,9 +147,9 @@ function getVoice(settings: VoiceSettings, onReady: (v: SpeechSynthesisVoice | n
   }
 
   const resolve = () => {
-    const v = findBestVoice(settings);
-    voiceCache.set(key, v);
-    onReady(v);
+    const name = findBestVoice(settings)?.name ?? null;
+    voiceCache.set(key, name);
+    onReady(name);
   };
 
   if (window.speechSynthesis.getVoices().length > 0) {
@@ -228,6 +250,63 @@ export function unlockAudio(): void {
   }
 }
 
+/**
+ * Chrome on Android abandons an utterance that runs much past ~15 seconds,
+ * and when it does it never fires `end` — the engine stays wedged in a
+ * speaking state where every later utterance queues behind it and is never
+ * heard. That is why a voice that worked on the first reply went quiet for the
+ * rest of the session. Speaking in sentence-sized pieces keeps every
+ * utterance comfortably inside the limit.
+ */
+const MAX_CHUNK_CHARS = 180;
+
+/** Settling time after a cancel before the engine will accept a new utterance. */
+const CANCEL_SETTLE_MS = 120;
+
+/** How long to give an utterance to start before assuming the engine is wedged. */
+const UTTERANCE_START_TIMEOUT_MS = 1500;
+
+/** Splits text into utterance-sized pieces, preferring sentence boundaries. */
+export function chunkForSpeech(text: string): string[] {
+  const pieces = text.match(/[^.!?\n]+[.!?]*|\n+/g) ?? [text];
+  const chunks: string[] = [];
+  let current = '';
+
+  const flushOversized = () => {
+    while (current.length > MAX_CHUNK_CHARS) {
+      // Break on a word boundary unless that would leave a stub, in which
+      // case a hard cut is better than one enormous utterance.
+      const space = current.lastIndexOf(' ', MAX_CHUNK_CHARS);
+      const at = space > MAX_CHUNK_CHARS * 0.6 ? space : MAX_CHUNK_CHARS;
+      chunks.push(current.slice(0, at).trim());
+      current = current.slice(at).trim();
+    }
+  };
+
+  for (const piece of pieces) {
+    const sentence = piece.trim();
+    if (!sentence) continue;
+    if (current && current.length + sentence.length + 1 > MAX_CHUNK_CHARS) {
+      chunks.push(current);
+      current = sentence;
+    } else {
+      current = current ? `${current} ${sentence}` : sentence;
+    }
+    flushOversized();
+  }
+  if (current) chunks.push(current);
+
+  // Whitespace-only input yields nothing to say, which the caller handles by
+  // finishing immediately rather than queueing a silent utterance.
+  return chunks.length > 0 ? chunks : text.trim() ? [text.trim()] : [];
+}
+
+/**
+ * Bumped by every new reply and every stop, so a queue that has been
+ * superseded abandons itself instead of speaking over what replaced it.
+ */
+let speechGeneration = 0;
+
 export function speak(
   text: string,
   voiceSettings: VoiceSettings,
@@ -237,13 +316,43 @@ export function speak(
   const cleanText = stripEmojisAndClean(text);
   if (!cleanText) { callbacks?.onEnd?.(); return; }
 
-  window.speechSynthesis?.cancel();
   stopKokoro();
 
   if (useKokoro) {
     speakWithKokoro(cleanText, voiceSettings, callbacks).then((ok) => {
-      if (!ok) speakWithBrowser(cleanText, voiceSettings, callbacks);
+      if (!ok) startBrowserSpeech(cleanText, voiceSettings, callbacks);
     });
+    return;
+  }
+
+  startBrowserSpeech(cleanText, voiceSettings, callbacks);
+}
+
+/**
+ * Clears whatever is speaking, then starts the new reply.
+ *
+ * The cancel is deliberately not followed by a `speak` in the same tick:
+ * Chrome drops an utterance queued that soon after a cancel, silently. The
+ * first reply of a session had nothing to cancel and so was heard, and every
+ * reply after it was cancelled into nothing — the whole of "it speaks once,
+ * then never again".
+ */
+function startBrowserSpeech(
+  cleanText: string,
+  voiceSettings: VoiceSettings,
+  callbacks?: SpeechCallbacks
+): void {
+  if (!isSpeechSynthesisSupported()) {
+    callbacks?.onError?.('Speech synthesis not supported');
+    return;
+  }
+
+  const synth = window.speechSynthesis;
+  speechGeneration += 1; // abandon anything already queued
+
+  if (synth.speaking || synth.pending || synth.paused) {
+    synth.cancel();
+    setTimeout(() => speakWithBrowser(cleanText, voiceSettings, callbacks), CANCEL_SETTLE_MS);
     return;
   }
 
@@ -260,23 +369,88 @@ function speakWithBrowser(
     return;
   }
 
-  getVoice(voiceSettings, (voice) => {
-    const utterance = new SpeechSynthesisUtterance(cleanText);
+  const synth = window.speechSynthesis;
+  const generation = speechGeneration;
 
-    if (voice) utterance.voice = voice;
-    utterance.rate   = voiceSettings.rate;
-    utterance.pitch  = voiceSettings.pitch;
-    utterance.volume = voiceSettings.volume;
+  getVoiceName(voiceSettings, (voiceName) => {
+    if (generation !== speechGeneration) return;
 
-    utterance.onstart = () => callbacks?.onStart?.();
-    utterance.onend   = () => callbacks?.onEnd?.();
-    utterance.onerror = (e) => callbacks?.onError?.(e.error);
+    const chunks = chunkForSpeech(cleanText);
+    let index = 0;
+    let announcedStart = false;
 
-    window.speechSynthesis.speak(utterance);
+    // `isRetry` means this piece is a second attempt: it drops the chosen
+    // voice in favour of the device default (the likeliest thing to be at
+    // fault) and gives up rather than retrying forever.
+    const speakChunk = (isRetry = false): void => {
+      if (generation !== speechGeneration) return;
+      if (index >= chunks.length) { callbacks?.onEnd?.(); return; }
+
+      const utterance = new SpeechSynthesisUtterance(chunks[index]);
+      const voice = !isRetry && voiceName
+        ? synth.getVoices().find((v) => v.name === voiceName)
+        : undefined;
+      if (voice) {
+        utterance.voice = voice;
+        // Some engines ignore `voice` unless `lang` agrees with it.
+        utterance.lang = voice.lang;
+      }
+      utterance.rate   = voiceSettings.rate;
+      utterance.pitch  = voiceSettings.pitch;
+      utterance.volume = voiceSettings.volume;
+
+      let settled = false;
+      let startTimer: ReturnType<typeof setTimeout> | undefined;
+
+      utterance.onstart = () => {
+        clearTimeout(startTimer);
+        if (!announcedStart) { announcedStart = true; callbacks?.onStart?.(); }
+      };
+
+      utterance.onend = () => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(startTimer);
+        index += 1;
+        speakChunk();
+      };
+
+      utterance.onerror = (e) => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(startTimer);
+        if (generation !== speechGeneration) return;
+        // Our own cancel, because a newer reply is taking over: not a failure.
+        if (e.error === 'interrupted' || e.error === 'canceled') return;
+        if (!isRetry) { speakChunk(true); return; }
+        callbacks?.onError?.(e.error);
+      };
+
+      // iOS leaves the engine paused when the page goes to the background and
+      // nothing resumes it on the way back, so coming back to the tab found a
+      // voice that would never speak again.
+      if (synth.paused) synth.resume();
+      synth.speak(utterance);
+
+      // An utterance that neither starts nor errors means the engine is
+      // wedged. Resetting it and re-queueing recovers the voice, where before
+      // the reply simply stayed silent with nothing reported.
+      startTimer = setTimeout(() => {
+        if (settled || generation !== speechGeneration) return;
+        if (synth.speaking || synth.pending) return; // working, just slow to report
+        settled = true;
+        if (isRetry) { callbacks?.onError?.('speech-unavailable'); return; }
+        synth.cancel();
+        setTimeout(() => { if (generation === speechGeneration) speakChunk(true); }, CANCEL_SETTLE_MS);
+      }, UTTERANCE_START_TIMEOUT_MS);
+    };
+
+    speakChunk();
   });
 }
 
 export function stopSpeaking(): void {
+  speechGeneration += 1;
   if (isSpeechSynthesisSupported()) {
     window.speechSynthesis.cancel();
   }
