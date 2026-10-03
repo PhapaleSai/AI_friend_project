@@ -2,7 +2,7 @@
 
 import type { VoiceSettings } from './characters';
 import { stripMarkdown } from './textFormat';
-import { speakWithKokoro, stopKokoro } from './kokoro';
+import { speakWithKokoro, stopKokoro, primeAudioPlayback } from './kokoro';
 
 type SpeechCallbacks = {
   onStart?: () => void;
@@ -110,6 +110,9 @@ function findBestVoice(settings: VoiceSettings): SpeechSynthesisVoice | null {
  */
 const voiceCache = new Map<string, SpeechSynthesisVoice | null>();
 
+// How long to wait for the device's voice list before speaking anyway.
+const VOICE_LIST_TIMEOUT_MS = 1000;
+
 function cacheKey(settings: VoiceSettings): string {
   return `${settings.gender}|${settings.preferredKeywords.join(',')}`;
 }
@@ -135,11 +138,29 @@ function getVoice(settings: VoiceSettings, onReady: (v: SpeechSynthesisVoice | n
   // Voices aren't loaded yet. addEventListener rather than assigning
   // onvoiceschanged: two characters waiting at once would otherwise overwrite
   // each other's handler and one would never get its voice.
-  window.speechSynthesis.addEventListener('voiceschanged', () => {
-    // Anything resolved against an empty list was a guess — start clean.
-    voiceCache.clear();
-    resolve();
-  }, { once: true });
+  //
+  // Some mobile browsers (Android WebViews in particular) never fire
+  // voiceschanged at all, so waiting on it alone meant no utterance was ever
+  // created and the reply stayed silent with nothing reported. Whichever comes
+  // first wins; past the deadline we speak in the device's default voice,
+  // which is the right accent far more often than it is no voice at all.
+  let settled = false;
+  const settle = (cacheable: boolean) => {
+    if (settled) return;
+    settled = true;
+    window.speechSynthesis.removeEventListener('voiceschanged', onChanged);
+    clearTimeout(timer);
+    if (cacheable) {
+      // Anything resolved against an empty list was a guess — start clean.
+      voiceCache.clear();
+      resolve();
+    } else {
+      onReady(null);
+    }
+  };
+  const onChanged = () => settle(true);
+  const timer = setTimeout(() => settle(false), VOICE_LIST_TIMEOUT_MS);
+  window.speechSynthesis.addEventListener('voiceschanged', onChanged);
 }
 
 /**
@@ -173,6 +194,38 @@ export function onVoicesReady(onChange: () => void): () => void {
   const handler = () => onChange();
   window.speechSynthesis.addEventListener('voiceschanged', handler);
   return () => window.speechSynthesis.removeEventListener('voiceschanged', handler);
+}
+
+let speechPrimed = false;
+
+/**
+ * Unlocks audio output for the rest of the page's life.
+ *
+ * Mobile browsers refuse both `speechSynthesis.speak` and `audio.play` unless
+ * the page has already produced sound from inside a user gesture. Every reply
+ * is spoken after awaiting the model, so by then the tap is over and the
+ * speech is dropped without an error — the reply appeared as text and the
+ * voice simply never arrived. Desktop has no such rule, which is why this only
+ * showed up on a phone.
+ *
+ * Call this synchronously from a tap or click handler — anything `await`ed
+ * first puts it outside the gesture and it stops working. Calling it on every
+ * tap is fine; the work happens once.
+ */
+export function unlockAudio(): void {
+  primeAudioPlayback();
+
+  if (speechPrimed || !isSpeechSynthesisSupported()) return;
+  speechPrimed = true;
+  try {
+    // A silent utterance: it counts as speech started by the tap, which is
+    // what lifts the restriction, but nothing is heard.
+    const warmup = new SpeechSynthesisUtterance(' ');
+    warmup.volume = 0;
+    window.speechSynthesis.speak(warmup);
+  } catch {
+    speechPrimed = false;
+  }
 }
 
 export function speak(

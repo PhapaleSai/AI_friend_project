@@ -33,6 +33,7 @@ import {
   transcribeAudio,
   isMicSupported,
   isSpeechSynthesisSupported,
+  unlockAudio,
   type RecordingHandle,
 } from '@/lib/speech';
 
@@ -177,6 +178,21 @@ export default function ChatInterface({ initialCharacter = 'naina', onBack, user
     if (!sessionStorage.getItem(MOOD_SESSION_KEY)) setShowMood(true);
 
     setHydrated(true);
+  }, []);
+
+  // A phone will only let the page make a sound if it has already made one
+  // during a tap, and replies are spoken long after the tap that asked for
+  // them. Unlocking from the first interaction anywhere on the screen — rather
+  // than from each button that can lead to speech — means whatever the user
+  // touches first, the voice works from then on.
+  useEffect(() => {
+    const unlock = () => unlockAudio();
+    window.addEventListener('pointerdown', unlock, { capture: true });
+    window.addEventListener('keydown', unlock, { capture: true });
+    return () => {
+      window.removeEventListener('pointerdown', unlock, { capture: true });
+      window.removeEventListener('keydown', unlock, { capture: true });
+    };
   }, []);
 
   useEffect(() => {

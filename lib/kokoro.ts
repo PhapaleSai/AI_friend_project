@@ -29,8 +29,56 @@ type KokoroModel = any;
 
 let modelPromise: Promise<KokoroModel> | null = null;
 let modelReady = false;
-let currentAudio: HTMLAudioElement | null = null;
 let currentUrl: string | null = null;
+
+/**
+ * One <audio> element, reused for every reply.
+ *
+ * Phones only let an element produce sound if its first play() came from a
+ * real tap, and a reply is generated after several awaits — long past the tap
+ * that asked for it. A fresh `new Audio()` per utterance is therefore silently
+ * refused on mobile, which is why the voice worked on desktop and not on a
+ * phone. Keeping a single element that `primeAudioPlayback` has already
+ * started inside a gesture makes every later play() an allowed one.
+ */
+let sharedAudio: HTMLAudioElement | null = null;
+let primed = false;
+
+// A valid, zero-sample WAV: enough to count as a real play without any sound.
+const SILENT_WAV =
+  'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA=';
+
+function getAudioElement(): HTMLAudioElement | null {
+  if (typeof window === 'undefined') return null;
+  if (!sharedAudio) {
+    sharedAudio = new Audio();
+    sharedAudio.preload = 'auto';
+    // Lets the reply play with the phone's ringer switch set to silent, and
+    // keeps iOS from treating it as media that should pause other audio.
+    sharedAudio.setAttribute('playsinline', 'true');
+  }
+  return sharedAudio;
+}
+
+/**
+ * Unlocks audio playback. Must be called synchronously from a user gesture
+ * (a tap or click handler) — once per page load is enough.
+ */
+export function primeAudioPlayback(): void {
+  if (primed) return;
+  const el = getAudioElement();
+  if (!el) return;
+  primed = true;
+  el.src = SILENT_WAV;
+  el.muted = true;
+  const done = () => { el.muted = false; el.removeAttribute('src'); };
+  el.play().then(done).catch(() => { el.muted = false; primed = false; });
+}
+
+/** Whether playback has been unlocked by a user gesture yet. */
+export function isAudioPrimed(): boolean {
+  return primed;
+}
 
 export function isKokoroSupported(): boolean {
   if (typeof window === 'undefined') return false;
@@ -106,10 +154,13 @@ export function isKokoroLoading(): boolean {
 }
 
 export function stopKokoro(): void {
-  if (currentAudio) {
-    currentAudio.pause();
-    currentAudio.currentTime = 0;
-    currentAudio = null;
+  // The element itself is kept: it carries the user-gesture unlock, and
+  // dropping it would mean the next reply had to be refused again.
+  if (sharedAudio) {
+    sharedAudio.pause();
+    sharedAudio.onended = null;
+    sharedAudio.onerror = null;
+    try { sharedAudio.currentTime = 0; } catch { /* no media loaded */ }
   }
   if (currentUrl) {
     URL.revokeObjectURL(currentUrl);
@@ -145,10 +196,12 @@ export async function speakWithKokoro(
     const audio = await tts.generate(text, { voice });
     const blob: Blob = audio.toBlob();
 
+    const el = getAudioElement();
+    if (!el) return false;
+
     const url = URL.createObjectURL(blob);
     currentUrl = url;
-    const el = new Audio(url);
-    currentAudio = el;
+    el.src = url;
     el.playbackRate = voiceSettings.rate > 0 ? Math.min(2, Math.max(0.5, voiceSettings.rate)) : 1;
 
     el.onended = () => { stopKokoro(); callbacks?.onEnd?.(); };
